@@ -1,0 +1,55 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# ── Virtual environments ───────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── Django ─────────────────────────────────────────────────────────────────────
+*.log
+staticfiles/
+media/
+db.sqlite3
+
+# ── Environment & secrets ─────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── macOS ─────────────────────────────────────────────────────────────────────
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+Thumbs.db
+
+# ── Editors & tools ───────────────────────────────────────────────────────────
+.idea/
+.vscode/
+.claude/
+*.swp
+*.swo
+*~
+
+# ── Terraform runtime ─────────────────────────────────────────────────────────
+# Workspace directories created during runs (not the template library)
+/var/deployctrl/
+/tmp/deployctrl/
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfplan
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+# Keep Dockerfile and docker-compose.yml tracked; ignore runtime volumes
+.docker/

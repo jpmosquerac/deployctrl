@@ -1,0 +1,47 @@
+version: '3.9'
+
+services:
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ..
+      dockerfile: local-dev/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ..:/app
+      - terraform_logs:/var/log/deployctrl/terraform
+      - terraform_workspace:/var/deployctrl/workspace
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-dev-only}
+      - DEBUG=${DEBUG:-True}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      - MONGO_URI=mongodb://mongo:27017/deployctrl
+      - MONGO_DB=${MONGO_DB:-deployctrl}
+      - JWT_ACCESS_HOURS=${JWT_ACCESS_HOURS:-8}
+      - JWT_REFRESH_DAYS=${JWT_REFRESH_DAYS:-7}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000}
+      - TERRAFORM_LOG_DIR=/var/log/deployctrl/terraform
+      - TERRAFORM_WORK_DIR=/var/deployctrl/workspace
+    depends_on:
+      mongo:
+        condition: service_healthy
+    command: >
+      sh -c "python manage.py seed_data &&
+             gunicorn deployctrl.wsgi:application --bind 0.0.0.0:8000 --workers 2 --reload"
+
+volumes:
+  mongo_data:
+  terraform_logs:
+  terraform_workspace:

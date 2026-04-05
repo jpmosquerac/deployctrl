@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DeployCtrl — Self-service infrastructure provisioning</title>
+  <meta name="description" content="Self-service infrastructure provisioning platform. Developers request cloud resources, architects approve them, DeployCtrl provisions via Terraform and GitOps." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --border:    #30363d;
+      --primary:   #2f81f7;
+      --primary-d: #1a6bdb;
+      --text:      #e6edf3;
+      --muted:     #8b949e;
+      --green:     #3fb950;
+      --orange:    #d29922;
+      --purple:    #a371f7;
+      --font:      -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      --mono:      "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(13,17,23,.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      height: 56px;
+    }
+    nav .logo {
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--text);
+      letter-spacing: -.3px;
+    }
+    nav .logo span { color: var(--primary); }
+    nav ul {
+      display: flex;
+      list-style: none;
+      gap: 1.5rem;
+      margin-left: auto;
+    }
+    nav ul a { color: var(--muted); font-size: .9rem; }
+    nav ul a:hover { color: var(--text); text-decoration: none; }
+    .nav-cta {
+      background: var(--primary);
+      color: #fff !important;
+      padding: .35rem .9rem;
+      border-radius: 6px;
+      font-size: .875rem !important;
+      font-weight: 600;
+    }
+    .nav-cta:hover { background: var(--primary-d); text-decoration: none !important; }
+
+    /* ── Sections ── */
+    section { padding: 5rem 1rem; }
+    .container { max-width: 960px; margin: 0 auto; }
+
+    /* ── Hero ── */
+    #hero {
+      padding: 7rem 1rem 5rem;
+      text-align: center;
+      background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(47,129,247,.18), transparent);
+    }
+    .badge {
+      display: inline-block;
+      background: rgba(47,129,247,.15);
+      border: 1px solid rgba(47,129,247,.35);
+      color: var(--primary);
+      font-size: .8rem;
+      font-weight: 600;
+      padding: .25rem .75rem;
+      border-radius: 20px;
+      margin-bottom: 1.5rem;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+    }
+    #hero h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -.5px;
+      margin-bottom: 1.25rem;
+    }
+    #hero h1 span { color: var(--primary); }
+    #hero p {
+      font-size: 1.15rem;
+      color: var(--muted);
+      max-width: 600px;
+      margin: 0 auto 2.5rem;
+    }
+    .hero-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .65rem 1.4rem;
+      border-radius: 6px;
+      font-size: .95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .btn:hover { opacity: .85; text-decoration: none; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+
+    /* ── How it works ── */
+    #how { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 2rem;
+      margin-top: 3rem;
+    }
+    .step { text-align: center; }
+    .step-num {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: rgba(47,129,247,.15);
+      border: 1px solid rgba(47,129,247,.35);
+      color: var(--primary);
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1rem;
+      font-size: .95rem;
+    }
+    .step h3 { font-size: 1rem; margin-bottom: .4rem; }
+    .step p { font-size: .875rem; color: var(--muted); }
+
+    /* ── Features ── */
+    #features h2, #how h2, #stack h2, #quickstart h2, #api h2 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      letter-spacing: -.3px;
+      margin-bottom: .5rem;
+    }
+    .section-sub { color: var(--muted); margin-bottom: 3rem; font-size: 1rem; }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.25rem;
+    }
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.5rem;
+      transition: border-color .2s;
+    }
+    .feature-card:hover { border-color: var(--primary); }
+    .feature-icon { font-size: 1.6rem; margin-bottom: .75rem; }
+    .feature-card h3 { font-size: 1rem; margin-bottom: .4rem; }
+    .feature-card p { font-size: .875rem; color: var(--muted); }
+
+    /* ── Stack ── */
+    #stack { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .stack-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: 2.5rem;
+    }
+    .stack-pill {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: .4rem 1rem;
+      font-size: .875rem;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .pill-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── Quick start ── */
+    .tab-group { margin-top: 2rem; }
+    .tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 0;
+    }
+    .tab {
+      padding: .6rem 1.2rem;
+      font-size: .875rem;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      user-select: none;
+    }
+    .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      padding: 1.25rem 1.5rem;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: .85rem;
+      line-height: 1.7;
+      color: var(--text);
+    }
+    pre .comment { color: var(--muted); }
+    pre .cmd { color: var(--green); }
+
+    /* ── API table ── */
+    #api { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; font-size: .875rem; margin-top: 2rem; }
+    th { text-align: left; padding: .6rem 1rem; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); }
+    td { padding: .6rem 1rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    code {
+      font-family: var(--mono);
+      font-size: .8rem;
+      background: rgba(110,118,129,.1);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: .1em .4em;
+    }
+    .method { font-weight: 700; }
+    .method.get    { color: var(--green); }
+    .method.post   { color: var(--primary); }
+    .method.patch  { color: var(--orange); }
+    .method.delete { color: #f85149; }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2.5rem 1rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: .875rem;
+    }
+    footer a { color: var(--muted); }
+    footer a:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <span class="logo">Deploy<span>Ctrl</span></span>
+  <ul>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#quickstart">Quick Start</a></li>
+    <li><a href="#api">API</a></li>
+    <li><a href="https://github.com/jpmosquerac/deployctrl" class="nav-cta">GitHub</a></li>
+  </ul>
+</nav>
+
+<!-- Hero -->
+<section id="hero">
+  <div class="container">
+    <div class="badge">Open Source</div>
+    <h1>Self-service <span>infrastructure</span><br>provisioning</h1>
+    <p>Developers request cloud resources, architects approve them, DeployCtrl provisions via Terraform and GitOps — all from a browser dashboard.</p>
+    <div class="hero-actions">
+      <a href="#quickstart" class="btn btn-primary">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        View on GitHub
+      </a>
+      <a href="http://34.224.83.179/" target="_blank" rel="noopener" class="btn btn-secondary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Live Demo
+      </a>
+      <a href="#quickstart" class="btn btn-secondary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        Quick Start
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- How it works -->
+<section id="how">
+  <div class="container">
+    <h2>How it works</h2>
+    <p class="section-sub">From request to provisioned infrastructure in four steps.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Developer submits</h3>
+        <p>Picks a template from the catalog and fills in parameters (instance type, region, tags…)</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Approve or auto-approve</h3>
+        <p>Requests within a team's cost threshold are approved automatically. Those that exceed it are queued for manual architect review.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>GitOps commit</h3>
+        <p>DeployCtrl renders Terraform files and pushes them to the configured GitHub repository.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h3>Terraform runs</h3>
+        <p><code>terraform apply</code> runs in the background. Logs stream live to the dashboard.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section id="features">
+  <div class="container">
+    <h2>Features</h2>
+    <p class="section-sub">Everything you need to manage cloud infrastructure at team scale.</p>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon">📋</div>
+        <h3>Template catalog</h3>
+        <p>Reusable infrastructure templates (EC2, S3, custom modules). Create, edit, and delete from the dashboard.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">✅</div>
+        <h3>Approval workflow</h3>
+        <p>Submit → approve → provision. Per-team cost thresholds enable automatic approval for small requests.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔀</div>
+        <h3>GitOps integration</h3>
+        <p>Rendered Terraform files are committed to a GitHub repository before every provisioning run.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <h3>Terraform automation</h3>
+        <p><code>terraform apply</code> and <code>terraform destroy</code> run in the background with live log streaming.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🗑️</div>
+        <h3>One-click decommission</h3>
+        <p>Runs <code>terraform destroy</code>, removes the GitHub folder, and clears state from MongoDB in one action.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔐</div>
+        <h3>Role-based access</h3>
+        <p><code>admin</code>, <code>architect</code>, <code>developer</code>, and <code>user</code> roles with per-permission granularity.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📜</div>
+        <h3>Audit log</h3>
+        <p>Immutable record of every platform action — who did what and when.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🗄️</div>
+        <h3>HTTP Terraform backend</h3>
+        <p>State stored in MongoDB. No S3 bucket or remote backend setup required.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Stack -->
+<section id="stack">
+  <div class="container">
+    <h2>Tech stack</h2>
+    <p class="section-sub">Built on a minimal, self-hostable set of dependencies.</p>
+    <div class="stack-grid">
+      <div class="stack-pill"><span class="pill-dot" style="background:#3776ab"></span> Python 3.11+</div>
+      <div class="stack-pill"><span class="pill-dot" style="background:#092e20"></span> Django 5</div>
+      <div class="stack-pill"><span class="pill-dot" style="background:#ef4444"></span> Django REST Framework</div>
+      <div class="stack-pill"><span class="pill-dot" style="background:#47a248"></span> MongoDB 7</div>
+      <div class="stack-pill"><span class="pill-dot" style="background:#7b42bc"></span> Terraform 1.10+</div>
+      <div class="stack-pill"><span class="pill-dot" style="background:#f05032"></span> GitHub (GitOps)</div>
+      <div class="stack-pill"><span class="pill-dot" style="background:#2496ed"></span> Docker</div>
+      <div class="stack-pill"><span class="pill-dot" style="background:#ff9900"></span> AWS (optional)</div>
+    </div>
+  </div>
+</section>
+
+<!-- Quick start -->
+<section id="quickstart">
+  <div class="container">
+    <h2>Quick start</h2>
+    <p class="section-sub">Up and running in under five minutes.</p>
+
+    <div class="tab-group">
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab(event,'docker')">Docker Compose</div>
+        <div class="tab" onclick="switchTab(event,'local')">Local install</div>
+      </div>
+
+      <div id="tab-docker" class="tab-pane active">
+        <pre><span class="comment"># Clone and start</span>
+<span class="cmd">git clone</span> https://github.com/jpmosquerac/deployctrl.git
+<span class="cmd">cd</span> deployctrl
+<span class="cmd">docker compose</span> -f local-dev/docker-compose.yml up --build</pre>
+      </div>
+
+      <div id="tab-local" class="tab-pane">
+        <pre><span class="comment"># Requires Python 3.11+ and MongoDB running locally</span>
+<span class="cmd">git clone</span> https://github.com/jpmosquerac/deployctrl.git
+<span class="cmd">cd</span> deployctrl
+<span class="cmd">bash</span> local-dev/install.sh
+<span class="cmd">source</span> .venv/bin/activate
+<span class="cmd">python</span> manage.py runserver</pre>
+      </div>
+    </div>
+
+    <p style="margin-top:1.5rem;font-size:.9rem;color:var(--muted)">
+      Open <strong style="color:var(--text)">http://localhost:8000</strong> &nbsp;·&nbsp;
+      Demo credentials: <code>admin / adminpassword123</code> &nbsp;|&nbsp; <code>alice / demopassword123</code> &nbsp;|&nbsp; <code>bob / demopassword123</code>
+    </p>
+  </div>
+</section>
+
+<!-- API reference -->
+<section id="api">
+  <div class="container">
+    <h2>API reference</h2>
+    <p class="section-sub">All endpoints require <code>Authorization: Bearer &lt;token&gt;</code> except auth routes.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Method</th>
+          <th>Path</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="method post">POST</span></td><td><code>/api/auth/login/</code></td><td>Obtain access + refresh tokens</td></tr>
+        <tr><td><span class="method post">POST</span></td><td><code>/api/auth/refresh/</code></td><td>Refresh access token</td></tr>
+        <tr><td><span class="method get">GET</span> / <span class="method post">POST</span></td><td><code>/api/templates/</code></td><td>List or create templates</td></tr>
+        <tr><td><span class="method get">GET</span> / <span class="method patch">PUT</span> / <span class="method delete">DELETE</span></td><td><code>/api/templates/&lt;id&gt;/</code></td><td>Get, update, or delete a template</td></tr>
+        <tr><td><span class="method get">GET</span> / <span class="method post">POST</span></td><td><code>/api/requests/</code></td><td>List or submit requests</td></tr>
+        <tr><td><span class="method get">GET</span> / <span class="method patch">PATCH</span></td><td><code>/api/requests/&lt;id&gt;/</code></td><td>Get or update (approve / reject) a request</td></tr>
+        <tr><td><span class="method post">POST</span></td><td><code>/api/requests/&lt;id&gt;/retry/</code></td><td>Re-trigger a failed Terraform run</td></tr>
+        <tr><td><span class="method post">POST</span></td><td><code>/api/requests/&lt;id&gt;/decommission/</code></td><td>Destroy and decommission a request</td></tr>
+        <tr><td><span class="method get">GET</span></td><td><code>/api/requests/&lt;id&gt;/outputs/</code></td><td>Get Terraform outputs for a request</td></tr>
+        <tr><td><span class="method get">GET</span></td><td><code>/api/terraform/runs/</code></td><td>List Terraform runs</td></tr>
+        <tr><td><span class="method get">GET</span></td><td><code>/api/terraform/runs/&lt;id&gt;/logs/</code></td><td>Get full log for a run</td></tr>
+        <tr><td><span class="method get">GET</span></td><td><code>/api/audit/</code></td><td>Query the audit log</td></tr>
+        <tr><td><span class="method get">GET</span> / <span class="method post">POST</span></td><td><code>/api/teams/</code></td><td>List or create teams</td></tr>
+        <tr><td><span class="method get">GET</span> / <span class="method patch">PUT</span></td><td><code>/api/settings/gitops/</code></td><td>Get or update GitOps config</td></tr>
+        <tr><td><span class="method get">GET</span></td><td><code>/api/users/</code></td><td>List users</td></tr>
+        <tr><td><span class="method patch">PATCH</span> / <span class="method delete">DELETE</span></td><td><code>/api/users/&lt;id&gt;/</code></td><td>Update or deactivate a user</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <p>
+    <a href="https://github.com/jpmosquerac/deployctrl">GitHub</a> &nbsp;·&nbsp;
+    <a href="https://github.com/jpmosquerac/deployctrl/blob/main/LICENSE">MIT License</a> &nbsp;·&nbsp;
+    <a href="https://github.com/jpmosquerac/deployctrl/issues">Issues</a>
+  </p>
+  <p style="margin-top:.5rem;">DeployCtrl — open source infrastructure provisioning</p>
+</footer>
+
+<script>
+  function switchTab(e, id) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    e.target.classList.add('active');
+    document.getElementById('tab-' + id).classList.add('active');
+  }
+</script>
+
+</body>
+</html>

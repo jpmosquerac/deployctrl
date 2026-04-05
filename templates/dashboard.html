@@ -1,0 +1,2091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DeployCtrl</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif; }
+    .nav-item { display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:6px; font-size:13.5px; font-weight:500; color:#64748b; cursor:pointer; transition:all .12s; }
+    .nav-item:hover { background:#f1f5f9; color:#0f172a; }
+    .nav-item.active { background:#eff6ff; color:#1d4ed8; }
+    .section { display:none; }
+    .section.active { display:block; }
+    th { font-size:11px; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em; padding:10px 16px; text-align:left; white-space:nowrap; }
+    td { padding:11px 16px; font-size:13.5px; color:#334155; border-top:1px solid #f1f5f9; }
+    tr:hover td { background:#f8fafc; }
+    .badge { display:inline-flex; align-items:center; padding:2px 8px; border-radius:9999px; font-size:11.5px; font-weight:500; white-space:nowrap; }
+    .badge-pending    { background:#fef9c3; color:#854d0e; }
+    .badge-approved   { background:#dcfce7; color:#15803d; }
+    .badge-rejected   { background:#fee2e2; color:#b91c1c; }
+    .badge-provisioned     { background:#dbeafe; color:#1d4ed8; }
+    .badge-decommissioning { background:#fed7aa; color:#9a3412; }
+    .badge-decommissioned  { background:#f1f5f9; color:#475569; }
+    .stat { background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:20px 24px; }
+    .card { background:#fff; border:1px solid #e2e8f0; border-radius:10px; }
+    input, select, textarea { background:#fff; border:1px solid #d1d5db; border-radius:8px; padding:8px 12px; font-size:13.5px; color:#0f172a; width:100%; transition:.15s; box-sizing:border-box; }
+    input:focus, select:focus, textarea:focus { outline:none; border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.1); }
+    input[readonly] { background:#f8fafc; color:#64748b; }
+    /* Config tabs */
+    .cfg-tab { padding:8px 14px; font-size:13px; font-weight:500; color:#64748b; border-bottom:2px solid transparent; cursor:pointer; white-space:nowrap; transition:.12s; }
+    .cfg-tab:hover { color:#0f172a; }
+    .cfg-tab.active { color:#1d4ed8; border-bottom-color:#2563eb; }
+    .cfg-panel { display:none; }
+    .cfg-panel.active { display:block; }
+    /* Permission matrix */
+    .perm-check { width:16px; height:16px; accent-color:#2563eb; cursor:pointer; }
+    /* Toast notifications */
+    @keyframes toast-in  { from { opacity:0; transform:translateX(calc(100% + 1rem)); } to { opacity:1; transform:translateX(0); } }
+    @keyframes toast-out { from { opacity:1; transform:translateX(0); } to { opacity:0; transform:translateX(calc(100% + 1rem)); } }
+    .toast-enter { animation: toast-in  .22s cubic-bezier(.21,1.02,.73,1) forwards; }
+    .toast-exit  { animation: toast-out .18s ease-in forwards; }
+    /* Danger btn */
+    .btn-danger { font-size:13px; font-weight:500; padding:5px 12px; border-radius:7px; border:1px solid #fecaca; color:#b91c1c; background:#fff; cursor:pointer; transition:.12s; }
+    .btn-danger:hover { background:#fee2e2; }
+    .btn-primary { font-size:13px; font-weight:500; padding:6px 14px; border-radius:7px; background:#2563eb; color:#fff; cursor:pointer; border:none; transition:.12s; }
+    .btn-primary:hover { background:#1d4ed8; }
+    .btn-secondary { font-size:13px; font-weight:500; padding:6px 14px; border-radius:7px; background:#fff; color:#374151; border:1px solid #d1d5db; cursor:pointer; transition:.12s; }
+    .btn-secondary:hover { background:#f9fafb; border-color:#9ca3af; }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex">
+
+  <!-- ── Sidebar ── -->
+  <aside class="w-56 flex-shrink-0 bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0">
+    <div class="flex items-center gap-2.5 px-4 h-14 border-b border-slate-200 flex-shrink-0">
+      <div class="w-7 h-7 bg-blue-600 rounded-md flex items-center justify-center">
+        <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/>
+        </svg>
+      </div>
+      <span class="text-sm font-semibold text-slate-900">DeployCtrl</span>
+    </div>
+
+    <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+      <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-2.5 mb-2">Platform</p>
+      <div class="nav-item active" data-section="overview" onclick="navigate('overview',this)">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
+        </svg>
+        Overview
+      </div>
+      <div class="nav-item" data-section="catalog" onclick="navigate('catalog',this)">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+        </svg>
+        Catalog
+      </div>
+      <div class="nav-item" data-section="requests" onclick="navigate('requests',this)">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+        Requests
+      </div>
+
+      <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-2.5 mb-2 mt-5" id="gov-label">Governance</p>
+      <div class="nav-item" id="nav-approvals" data-section="approvals" onclick="navigate('approvals',this)">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        Approvals
+      </div>
+      <div class="nav-item" id="nav-deployments" data-section="deployments" onclick="navigate('deployments',this)">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+        Deployments
+      </div>
+      <div class="nav-item hidden" id="nav-templates" data-section="templates" onclick="navigate('templates',this)">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/>
+        </svg>
+        Templates
+      </div>
+      <div class="nav-item" id="nav-config" data-section="configuration" onclick="navigate('configuration',this)">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+        Configuration
+      </div>
+      <div class="nav-item" id="nav-audit" data-section="audit" onclick="navigate('audit',this)">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        Audit Log
+      </div>
+    </nav>
+
+    <div class="px-3 py-3 border-t border-slate-200">
+      <div class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-slate-50 transition-colors group">
+        <div id="user-avatar" class="w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0">?</div>
+        <div class="min-w-0 flex-1">
+          <p id="user-name" class="text-[13px] font-medium text-slate-800 truncate">—</p>
+          <p id="user-role" class="text-[11px] text-slate-400 capitalize">—</p>
+        </div>
+        <button onclick="logout()" title="Sign out" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-700 transition-all ml-auto flex-shrink-0">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <main class="flex-1 min-h-screen flex flex-col">
+    <header class="h-14 flex items-center justify-between px-8 bg-white border-b border-slate-200 flex-shrink-0 sticky top-0 z-10">
+      <h1 id="page-title" class="text-sm font-semibold text-slate-900">Overview</h1>
+      <button onclick="openRequestModal()" class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3.5 py-1.5 rounded-lg transition-colors">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+        </svg>
+        New request
+      </button>
+    </header>
+
+    <div class="flex-1 p-8">
+
+      <!-- ── OVERVIEW ── -->
+      <div id="section-overview" class="section active space-y-6">
+        <div class="grid grid-cols-2 xl:grid-cols-4 gap-4">
+          <div class="stat"><p class="text-xs font-medium text-slate-500 mb-2">Total requests</p><p id="stat-total" class="text-2xl font-semibold text-slate-900">—</p></div>
+          <div class="stat"><p class="text-xs font-medium text-amber-600 mb-2">Pending approval</p><p id="stat-pending" class="text-2xl font-semibold text-slate-900">—</p></div>
+          <div class="stat"><p class="text-xs font-medium text-green-600 mb-2">Provisioned</p><p id="stat-provisioned" class="text-2xl font-semibold text-slate-900">—</p></div>
+          <div class="stat"><p class="text-xs font-medium text-blue-600 mb-2">Monthly cost</p><p id="stat-cost" class="text-2xl font-semibold text-slate-900">—</p></div>
+        </div>
+        <div class="card">
+          <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+            <p class="text-sm font-semibold text-slate-900">Recent requests</p>
+            <button onclick="navigate('requests',document.querySelector('[data-section=requests]'))" class="text-xs text-blue-600 hover:text-blue-700 font-medium">View all</button>
+          </div>
+          <div id="overview-requests"><div class="px-5 py-8 text-center text-sm text-slate-400">Loading…</div></div>
+        </div>
+      </div>
+
+      <!-- ── CATALOG ── -->
+      <div id="section-catalog" class="section">
+        <div id="catalog-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          <div class="col-span-full py-10 text-center text-sm text-slate-400">Loading…</div>
+        </div>
+      </div>
+
+      <!-- ── REQUESTS ── -->
+      <div id="section-requests" class="section">
+        <div class="card overflow-hidden">
+          <table class="w-full">
+            <thead class="bg-slate-50 border-b border-slate-200"><tr><th>ID</th><th>Template</th><th>Cost/mo</th><th>Status</th><th>Deployment</th><th>Created</th><th></th></tr></thead>
+            <tbody id="requests-tbody"><tr><td colspan="7" class="text-center py-10 text-slate-400">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── APPROVALS ── -->
+      <div id="section-approvals" class="section">
+        <div class="card divide-y divide-slate-100">
+          <div class="px-5 py-4">
+            <p class="text-sm font-semibold text-slate-900">Pending approvals</p>
+            <p class="text-xs text-slate-400 mt-0.5">Review infrastructure requests before provisioning</p>
+          </div>
+          <div id="approvals-list"><div class="px-5 py-8 text-center text-sm text-slate-400">Loading…</div></div>
+        </div>
+      </div>
+
+      <!-- ── CONFIGURATION ── -->
+      <div id="section-configuration" class="section">
+        <!-- Tab bar -->
+        <div class="flex gap-0 border-b border-slate-200 mb-6 -mt-1 overflow-x-auto">
+          <button class="cfg-tab active" data-tab="users"   onclick="cfgTab('users',this)">Users</button>
+          <button class="cfg-tab"        data-tab="teams"   onclick="cfgTab('teams',this)">Teams</button>
+          <button class="cfg-tab"        data-tab="rbac"    onclick="cfgTab('rbac',this)">RBAC</button>
+          <button class="cfg-tab"        data-tab="gitops"  onclick="cfgTab('gitops',this)" id="cfg-tab-gitops">GitOps</button>
+        </div>
+
+        <!-- ── TAB: USUARIOS ── -->
+        <div id="cfg-users" class="cfg-panel active space-y-5">
+          <div class="flex items-center justify-between">
+            <p class="text-sm font-semibold text-slate-900">System users</p>
+            <button onclick="toggleUserForm()" class="btn-primary">+ Create user</button>
+          </div>
+
+          <!-- Create user form -->
+          <div id="user-form-wrap" class="hidden card p-5 max-w-xl">
+            <p class="text-sm font-semibold text-slate-800 mb-4">New user</p>
+            <form id="user-create-form" onsubmit="createUser(event)" class="space-y-3">
+              <div class="grid grid-cols-2 gap-3">
+                <div><label class="block text-xs font-medium text-slate-600 mb-1">First name</label><input id="u-first" type="text" placeholder="Alice"/></div>
+                <div><label class="block text-xs font-medium text-slate-600 mb-1">Last name</label><input id="u-last" type="text" placeholder="Dev"/></div>
+              </div>
+              <div><label class="block text-xs font-medium text-slate-600 mb-1">Username</label><input id="u-username" type="text" placeholder="alice.dev"/></div>
+              <div><label class="block text-xs font-medium text-slate-600 mb-1">Email</label><input id="u-email" type="email" placeholder="alice@company.com"/></div>
+              <div><label class="block text-xs font-medium text-slate-600 mb-1">Password</label><input id="u-password" type="password" placeholder="Min. 8 characters"/></div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-medium text-slate-600 mb-1">Role</label>
+                  <select id="u-role">
+                    <option value="developer">Developer</option>
+                    <option value="architect">Architect</option>
+                    <option value="admin">Admin</option>
+                    <option value="user">User</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-600 mb-1">Team</label>
+                  <select id="u-team"><option value="">No team</option></select>
+                </div>
+              </div>
+              <div id="user-form-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+              <div class="flex gap-2 pt-1">
+                <button type="submit" class="btn-primary">Create user</button>
+                <button type="button" onclick="toggleUserForm()" class="btn-secondary">Cancel</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Users table -->
+          <div class="card overflow-hidden">
+            <table class="w-full">
+              <thead class="bg-slate-50 border-b border-slate-200"><tr><th>User</th><th>Email</th><th>Role</th><th>Team</th><th></th></tr></thead>
+              <tbody id="users-tbody"><tr><td colspan="5" class="text-center py-8 text-slate-400">Loading…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ── TAB: EQUIPOS ── -->
+        <div id="cfg-teams" class="cfg-panel space-y-5">
+          <div class="flex items-center justify-between">
+            <p class="text-sm font-semibold text-slate-900">Teams &amp; budgets</p>
+            <button onclick="toggleTeamForm()" class="btn-primary">+ Create team</button>
+          </div>
+
+          <!-- Create team form -->
+          <div id="team-form-wrap" class="hidden card p-5 max-w-xl">
+            <p class="text-sm font-semibold text-slate-800 mb-4">New team</p>
+            <form id="team-create-form" onsubmit="createTeam(event)" class="space-y-3">
+              <div><label class="block text-xs font-medium text-slate-600 mb-1">Team name</label><input id="t-name" type="text" placeholder="Platform"/></div>
+              <div><label class="block text-xs font-medium text-slate-600 mb-1">Description</label><input id="t-desc" type="text" placeholder="Optional description"/></div>
+              <div><label class="block text-xs font-medium text-slate-600 mb-1">Monthly budget ($)</label><input id="t-budget" type="number" min="0" placeholder="5000"/></div>
+              <div><label class="block text-xs font-medium text-slate-600 mb-1">Auto-approval threshold ($)</label><input id="t-threshold" type="number" min="0" placeholder="100"/></div>
+              <div id="team-form-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+              <div class="flex gap-2 pt-1">
+                <button type="submit" class="btn-primary">Create team</button>
+                <button type="button" onclick="toggleTeamForm()" class="btn-secondary">Cancel</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Teams table -->
+          <div class="card overflow-hidden">
+            <table class="w-full">
+              <thead class="bg-slate-50 border-b border-slate-200"><tr><th>Team</th><th>Description</th><th>Monthly budget</th><th>Auto-approval threshold</th><th>Created</th><th></th></tr></thead>
+              <tbody id="teams-tbody"><tr><td colspan="6" class="text-center py-8 text-slate-400">Loading…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ── TAB: RBAC ── -->
+        <div id="cfg-rbac" class="cfg-panel space-y-5">
+          <div>
+            <p class="text-sm font-semibold text-slate-900">Role-based access control</p>
+            <p class="text-xs text-slate-500 mt-0.5">Enable or disable permissions per role. Changes apply immediately.</p>
+          </div>
+          <div class="card overflow-x-auto">
+            <div id="rbac-matrix"><div class="p-8 text-center text-sm text-slate-400">Loading…</div></div>
+          </div>
+          <div id="rbac-save-row" style="display:none" class="flex items-center gap-3">
+            <button onclick="saveRbac()" class="btn-primary">Save changes</button>
+          </div>
+        </div>
+
+        <!-- ── TAB: GITOPS ── -->
+        <div id="cfg-gitops" class="cfg-panel space-y-5">
+          <div>
+            <p class="text-sm font-semibold text-slate-900">GitOps integration</p>
+            <p class="text-xs text-slate-500 mt-0.5">Connect a GitHub repository where approved Terraform files will be pushed and automatically applied.</p>
+          </div>
+          <div class="card p-5 max-w-xl space-y-4">
+            <div class="flex items-center justify-between">
+              <label class="text-sm font-medium text-slate-700">Enable GitOps</label>
+              <button id="gitops-toggle" onclick="toggleGitOps()" class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors bg-slate-200">
+                <span id="gitops-toggle-knob" class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform translate-x-1"></span>
+              </button>
+            </div>
+            <div class="border-t border-slate-100 pt-4 space-y-3">
+              <div class="grid grid-cols-2 gap-3">
+                <div><label class="block text-xs font-medium text-slate-600 mb-1">Owner / Org</label><input id="go-owner" type="text" placeholder="my-org"/></div>
+                <div><label class="block text-xs font-medium text-slate-600 mb-1">Repository</label><input id="go-repo" type="text" placeholder="infra-deployments"/></div>
+              </div>
+              <div><label class="block text-xs font-medium text-slate-600 mb-1">Branch</label><input id="go-branch" type="text" placeholder="main"/></div>
+              <div><label class="block text-xs font-medium text-slate-600 mb-1">Personal access token</label><input id="go-token" type="password" placeholder="ghp_…"/></div>
+            </div>
+            <div id="gitops-status" class="hidden text-sm rounded-lg px-3 py-2"></div>
+            <div class="flex gap-2 pt-1">
+              <button onclick="saveGitOps()" class="btn-primary">Save</button>
+              <button onclick="testGitOps()" class="btn-secondary">Test connection</button>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /section-configuration -->
+
+      <!-- ── DEPLOYMENTS ── -->
+      <div id="section-deployments" class="section">
+        <div class="card overflow-hidden">
+          <div class="flex items-center justify-between px-5 py-3 border-b border-slate-200">
+            <p class="text-sm font-semibold text-slate-900">Terraform Deployments</p>
+            <button onclick="loadDeployments()" class="btn-secondary text-xs py-1 px-2.5">Refresh</button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead class="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th class="text-left px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                  <th class="text-left px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Request</th>
+                  <th class="text-left px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Team</th>
+                  <th class="text-left px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Started</th>
+                  <th class="text-left px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Duration</th>
+                  <th class="text-left px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Summary</th>
+                  <th class="px-3 py-2.5"></th>
+                </tr>
+              </thead>
+              <tbody id="deployments-tbody">
+                <tr><td colspan="7" class="text-center py-10 text-slate-400">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── AUDIT ── -->
+      <div id="section-audit" class="section space-y-4">
+        <!-- Filter bar -->
+        <div class="card p-4 flex flex-wrap items-end gap-3">
+          <div class="flex-1 min-w-[140px]">
+            <label class="block text-xs font-medium text-slate-500 mb-1">Event type</label>
+            <select id="audit-filter-type" class="w-full text-slate-400">
+              <option value="">All events</option>
+              <option value="REQUEST_CREATED">Request created</option>
+              <option value="REQUEST_APPROVED">Request approved</option>
+              <option value="REQUEST_REJECTED">Request rejected</option>
+              <option value="REQUEST_PROVISIONED">Request provisioned</option>
+              <option value="RESOURCE_PUSHED">Resource pushed</option>
+              <option value="RESOURCE_RENDERED">Resource rendered</option>
+              <option value="RESOURCE_ERROR">Resource error</option>
+              <option value="TERRAFORM_APPLIED">Terraform applied</option>
+              <option value="TERRAFORM_FAILED">Terraform failed</option>
+              <option value="TERRAFORM_RETRIED">Terraform retried</option>
+              <option value="TERRAFORM_DECOMMISSION_TRIGGERED">Terraform decommission triggered</option>
+              <option value="TERRAFORM_DESTROYED">Terraform destroyed</option>
+              <option value="TERRAFORM_DESTROY_FAILED">Terraform destroy failed</option>
+              <option value="GITOPS_CONFIGURED">GitOps configured</option>
+            </select>
+          </div>
+          <div class="flex-1 min-w-[140px]">
+            <label class="block text-xs font-medium text-slate-500 mb-1">Actor</label>
+            <input id="audit-filter-actor" type="text" placeholder="Username…" class="w-full text-slate-400 placeholder-slate-400"/>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-500 mb-1">From</label>
+            <input id="audit-filter-from" type="date" class="w-full text-slate-400"/>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-500 mb-1">To</label>
+            <input id="audit-filter-to" type="date" class="w-full text-slate-400"/>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="loadAudit()" class="btn-primary">Apply</button>
+            <button onclick="clearAuditFilters()" class="btn-secondary">Clear</button>
+            <div class="relative" id="audit-dl-wrap">
+              <button onclick="toggleAuditDlMenu()" class="btn-secondary flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                Download
+                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+              </button>
+              <div id="audit-dl-menu" class="hidden absolute right-0 mt-1 w-32 bg-white border border-slate-200 rounded-lg shadow-lg z-10 overflow-hidden">
+                <button onclick="downloadAudit('csv')" class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">CSV</button>
+                <button onclick="downloadAudit('json')" class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">JSON</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Table -->
+        <div class="card overflow-hidden">
+          <table class="w-full">
+            <thead class="bg-slate-50 border-b border-slate-200"><tr><th>Time</th><th>Event</th><th>Actor</th><th>Resource</th><th>Details</th></tr></thead>
+            <tbody id="audit-tbody"><tr><td colspan="5" class="text-center py-10 text-slate-400">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── TEMPLATES ── -->
+      <div id="section-templates" class="section space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-base font-semibold text-slate-800">Infrastructure Templates</h2>
+          <div class="flex gap-2">
+            <button onclick="loadTemplates()" class="btn-secondary text-xs px-3 py-1.5">
+              <svg class="w-3.5 h-3.5 inline -mt-0.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              Refresh
+            </button>
+            <button onclick="openTemplateModal()" class="btn-primary text-xs px-3 py-1.5">+ New template</button>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <table class="w-full">
+            <thead class="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500">ID</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500">Name</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500">Category</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500">Est. Cost</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500">Parameters</th>
+                <th class="px-4 py-3"></th>
+              </tr>
+            </thead>
+            <tbody id="templates-tbody">
+              <tr><td colspan="6" class="text-center py-10 text-slate-400">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ── Template Editor Modal ── -->
+  <div id="template-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/40" onclick="closeTemplateModal()"></div>
+    <div class="relative bg-white rounded-xl shadow-xl w-full max-w-3xl border border-slate-200 flex flex-col max-h-[92vh]">
+      <div class="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100 flex-shrink-0">
+        <h2 id="tmpl-modal-title" class="text-sm font-semibold text-slate-900">New template</h2>
+        <button onclick="closeTemplateModal()" class="text-slate-400 hover:text-slate-600">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="overflow-y-auto flex-1 px-6 py-5 space-y-4">
+        <!-- Basic info -->
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1.5">Template ID <span class="text-red-500">*</span></label>
+            <input id="tmpl-id" type="text" placeholder="t-my-template" class="w-full" />
+            <p class="text-xs text-slate-400 mt-1">Unique identifier, e.g. <code>t-ec2</code></p>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1.5">Name <span class="text-red-500">*</span></label>
+            <input id="tmpl-name" type="text" placeholder="My Template" class="w-full" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1.5">Description</label>
+          <textarea id="tmpl-description" rows="2" placeholder="What does this template provision?" class="w-full resize-none"></textarea>
+        </div>
+        <div class="grid grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1.5">Category</label>
+            <input id="tmpl-category" type="text" placeholder="compute / storage / network…" class="w-full" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1.5">Icon</label>
+            <select id="tmpl-icon" class="w-full">
+              <option value="server">🖥  Server</option>
+              <option value="hard-drive">💾  Hard Drive</option>
+              <option value="database">🗄  Database</option>
+              <option value="network">🌐  Network / VPC</option>
+              <option value="cloud">☁️  Cloud</option>
+              <option value="container">📦  Container</option>
+              <option value="lock">🔒  Security / Lock</option>
+              <option value="activity">📈  Monitoring</option>
+              <option value="zap">⚡  Function / Lambda</option>
+              <option value="layers">🗂  Stack / Layers</option>
+              <option value="globe">🌍  DNS / CDN</option>
+              <option value="inbox">📥  Queue / Messaging</option>
+              <option value="cpu">💻  Compute / CPU</option>
+              <option value="key">🔑  IAM / Keys</option>
+              <option value="git-branch">🔀  Pipeline / CI</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1.5">Estimated cost ($/mo)</label>
+            <input id="tmpl-cost" type="number" step="0.01" min="0" placeholder="0.00" class="w-full" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1.5">Cost note</label>
+          <input id="tmpl-cost-note" type="text" placeholder="e.g. Cost = instance_type + disk" class="w-full" />
+        </div>
+        <!-- Terraform module -->
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1.5">Terraform module (.tf)</label>
+          <textarea id="tmpl-tf" rows="12" placeholder="# Paste your Terraform HCL here…" class="w-full font-mono text-xs resize-y"></textarea>
+          <p class="text-xs text-slate-400 mt-1">Variables <code>region</code> and <code>name_prefix</code> are injected automatically by DeployCtrl. Do not redeclare them.</p>
+        </div>
+        <!-- Parameters JSON -->
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1.5">Parameters (JSON)</label>
+          <textarea id="tmpl-params" rows="10" placeholder='{"my_param": {"label": "My Param", "type": "select", "required": true, "options": []}}' class="w-full font-mono text-xs resize-y"></textarea>
+          <p class="text-xs text-slate-400 mt-1">JSON object mapping parameter key → definition. Supported types: <code>select</code>, <code>number</code>, <code>text</code>, <code>portlist</code>.</p>
+        </div>
+      </div>
+      <div class="flex items-center justify-between px-6 py-4 border-t border-slate-200 flex-shrink-0">
+        <span id="tmpl-modal-err" class="text-xs text-red-600"></span>
+        <div class="flex gap-2">
+          <button onclick="closeTemplateModal()" class="btn-secondary text-xs py-1.5 px-4">Cancel</button>
+          <button id="tmpl-save-btn" onclick="saveTemplate()" class="btn-primary text-xs py-1.5 px-4">Save template</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── New Request Modal ── -->
+  <div id="request-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/30" onclick="closeRequestModal()"></div>
+    <div class="relative bg-white rounded-xl shadow-xl w-full max-w-2xl border border-slate-200 flex flex-col max-h-[92vh]">
+      <div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-100 flex-shrink-0">
+        <h2 class="text-sm font-semibold text-slate-900">New infrastructure request</h2>
+        <button onclick="closeRequestModal()" class="text-slate-400 hover:text-slate-600">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="overflow-y-auto flex-1 px-6 py-4">
+        <form id="req-form" class="space-y-4" onsubmit="submitRequest(event)">
+          <!-- Template + Region -->
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="block text-xs font-medium text-slate-600 mb-1.5">Template</label>
+              <select id="req-template" onchange="onTemplateChange()"><option value="">Select…</option></select></div>
+            <div><label class="block text-xs font-medium text-slate-600 mb-1.5">Region</label><select id="req-region"></select></div>
+          </div>
+
+          <!-- EC2 Parameters (rendered dynamically) -->
+          <div id="req-params" class="space-y-3"></div>
+
+          <!-- Estimated cost -->
+          <div class="bg-slate-50 rounded-lg px-4 py-3 flex items-center justify-between">
+            <span class="text-xs text-slate-500">Estimated monthly cost</span>
+            <span class="text-base font-semibold text-slate-900">$<span id="req-cost-display">—</span><span class="text-xs font-normal text-slate-400">/mo</span></span>
+          </div>
+
+          <div><label class="block text-xs font-medium text-slate-600 mb-1.5">Justification</label>
+            <textarea id="req-justification" rows="2" placeholder="Describe the business need…" style="resize:none"></textarea></div>
+          <div id="req-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+        </form>
+      </div>
+      <div class="flex gap-2.5 px-6 py-4 border-t border-slate-100 flex-shrink-0">
+        <button onclick="submitRequest(event)" id="req-submit-btn" class="flex-1 btn-primary py-2">Submit</button>
+        <button type="button" onclick="closeRequestModal()" class="btn-secondary px-4">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Edit User Modal ── -->
+  <div id="user-edit-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/30" onclick="closeUserEdit()"></div>
+    <div class="relative bg-white rounded-xl shadow-xl w-full max-w-sm p-6 border border-slate-200">
+      <h2 class="text-sm font-semibold text-slate-900 mb-4">Edit user</h2>
+      <form id="user-edit-form" onsubmit="saveUserEdit(event)" class="space-y-3">
+        <input id="ue-id" type="hidden"/>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block text-xs font-medium text-slate-600 mb-1">First name</label><input id="ue-first" type="text"/></div>
+          <div><label class="block text-xs font-medium text-slate-600 mb-1">Last name</label><input id="ue-last" type="text"/></div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Role</label>
+          <select id="ue-role">
+            <option value="developer">Developer</option>
+            <option value="architect">Architect</option>
+            <option value="admin">Admin</option>
+            <option value="user">User</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Team</label>
+          <select id="ue-team"><option value="">No team</option></select>
+        </div>
+        <div class="flex gap-2 pt-1">
+          <button type="submit" class="btn-primary flex-1">Save</button>
+          <button type="button" onclick="closeUserEdit()" class="btn-secondary">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Edit Team Modal ── -->
+  <div id="team-edit-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/30" onclick="closeTeamEdit()"></div>
+    <div class="relative bg-white rounded-xl shadow-xl w-full max-w-sm p-6 border border-slate-200">
+      <h2 class="text-sm font-semibold text-slate-900 mb-4">Edit team</h2>
+      <form id="team-edit-form" onsubmit="saveTeamEdit(event)" class="space-y-3">
+        <input id="te-id" type="hidden"/>
+        <div><label class="block text-xs font-medium text-slate-600 mb-1">Name</label><input id="te-name" type="text"/></div>
+        <div><label class="block text-xs font-medium text-slate-600 mb-1">Description</label><input id="te-desc" type="text"/></div>
+        <div><label class="block text-xs font-medium text-slate-600 mb-1">Monthly budget ($)</label><input id="te-budget" type="number" min="0"/></div>
+        <div><label class="block text-xs font-medium text-slate-600 mb-1">Auto-approval threshold ($)</label><input id="te-threshold" type="number" min="0"/></div>
+        <div class="flex gap-2 pt-1">
+          <button type="submit" class="btn-primary flex-1">Save</button>
+          <button type="button" onclick="closeTeamEdit()" class="btn-secondary">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div id="toast-container" class="fixed top-4 right-4 z-[200] flex flex-col gap-2 items-end pointer-events-none" style="max-width:320px"></div>
+
+  <script>
+  // ── Auth ────────────────────────────────────────────────────────────────
+  const token = localStorage.getItem('dc_token');
+  let user = null;
+  try { user = JSON.parse(localStorage.getItem('dc_user') || 'null'); } catch(e) { /* corrupt storage */ }
+  if (!token || !user) {
+    ['dc_token','dc_refresh','dc_user'].forEach(k => localStorage.removeItem(k));
+    window.location.href = '/';
+  }
+  const isPriv  = user && (user.role === 'architect' || user.role === 'admin');
+  const isAdmin = user && user.role === 'admin';
+
+  let allRequests = [], allTemplates = [], allTeams = [];
+  let rbacData = [];
+
+  function authH() { return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }; }
+  async function api(url, opts = {}) {
+    const { headers: extraHeaders, ...rest } = opts;
+    const r = await fetch(url, { headers: { ...authH(), ...extraHeaders }, ...rest });
+    if (r.status === 401) { logout(); return null; }
+    return r;
+  }
+  function logout() {
+    ['dc_token','dc_refresh','dc_user'].forEach(k => localStorage.removeItem(k));
+    window.location.href = '/';
+  }
+
+  // ── Navigation ──────────────────────────────────────────────────────────
+  const titles = { overview:'Overview', catalog:'Catalog', requests:'Requests', approvals:'Approvals', configuration:'Configuration', deployments:'Deployments', audit:'Audit Log' };
+  function navigate(s, el) {
+    document.querySelectorAll('.section').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
+    document.getElementById(`section-${s}`).classList.add('active');
+    if (el) el.classList.add('active');
+    document.getElementById('page-title').textContent = titles[s] || s;
+    if (s === 'overview')       loadOverview();
+    if (s === 'catalog')        renderCatalog();
+    if (s === 'requests')       loadRequests();
+    if (s === 'approvals')      renderApprovals();
+    if (s === 'configuration')  initConfig();
+    if (s === 'deployments')    loadDeployments();
+    if (s === 'audit')          { initAuditFilterColors(); loadAudit(); }
+    if (s === 'templates')      loadTemplates();
+  }
+
+  // ── Config tabs ─────────────────────────────────────────────────────────
+  function cfgTab(tab, el) {
+    document.querySelectorAll('.cfg-tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.cfg-panel').forEach(x => x.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById(`cfg-${tab}`).classList.add('active');
+    if (tab === 'users')   loadUsers();
+    if (tab === 'teams')   loadTeams();
+    if (tab === 'rbac')    loadRbac();
+    if (tab === 'gitops')  loadGitOps();
+  }
+
+  function initConfig() {
+    loadUsers();  // default tab
+    loadTeams();  // pre-fetch for user form dropdown
+    // Hide GitOps tab for non-privileged users
+    const tab = document.getElementById('cfg-tab-gitops');
+    if (tab) tab.style.display = isPriv ? '' : 'none';
+  }
+
+  // ── GitOps ───────────────────────────────────────────────────────────────
+  let _gitopsEnabled = false;
+
+  async function loadGitOps() {
+    const res = await api('/api/settings/gitops/');
+    if (!res?.ok) return;
+    const data = await res.json();
+    _gitopsEnabled = data.enabled;
+    _setGitOpsToggle(_gitopsEnabled);
+    document.getElementById('go-owner').value  = data.config?.owner  || '';
+    document.getElementById('go-repo').value   = data.config?.repo   || '';
+    document.getElementById('go-branch').value = data.config?.branch || 'main';
+    document.getElementById('go-token').value  = data.config?.token  || '';
+  }
+
+  function _setGitOpsToggle(on) {
+    const btn  = document.getElementById('gitops-toggle');
+    const knob = document.getElementById('gitops-toggle-knob');
+    if (on) { btn.classList.replace('bg-slate-200','bg-blue-600'); knob.classList.replace('translate-x-1','translate-x-6'); }
+    else    { btn.classList.replace('bg-blue-600','bg-slate-200'); knob.classList.replace('translate-x-6','translate-x-1'); }
+  }
+
+  function toggleGitOps() {
+    _gitopsEnabled = !_gitopsEnabled;
+    _setGitOpsToggle(_gitopsEnabled);
+  }
+
+  async function saveGitOps() {
+    const body = {
+      enabled: _gitopsEnabled,
+      config: {
+        owner:  document.getElementById('go-owner').value.trim(),
+        repo:   document.getElementById('go-repo').value.trim(),
+        branch: document.getElementById('go-branch').value.trim() || 'main',
+        token:  document.getElementById('go-token').value.trim(),
+      },
+    };
+    const res = await api('/api/settings/gitops/', { method:'PUT', body: JSON.stringify(body) });
+    const el = document.getElementById('gitops-status');
+    if (res?.ok) {
+      el.className = 'text-sm rounded-lg px-3 py-2 bg-green-50 text-green-700 border border-green-200';
+      el.textContent = 'Configuration saved.';
+    } else {
+      el.className = 'text-sm rounded-lg px-3 py-2 bg-red-50 text-red-600 border border-red-200';
+      el.textContent = 'Failed to save.';
+    }
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 4000);
+  }
+
+  async function testGitOps() {
+    const body = {
+      owner:  document.getElementById('go-owner').value.trim(),
+      repo:   document.getElementById('go-repo').value.trim(),
+      branch: document.getElementById('go-branch').value.trim() || 'main',
+      token:  document.getElementById('go-token').value.trim(),
+    };
+    const el = document.getElementById('gitops-status');
+    el.className = 'text-sm rounded-lg px-3 py-2 bg-slate-50 text-slate-600 border border-slate-200';
+    el.textContent = 'Testing…';
+    el.classList.remove('hidden');
+    const res = await api('/api/settings/gitops/test/', { method:'POST', body: JSON.stringify(body) });
+    if (!res) return;
+    const data = await res.json();
+    if (data.ok) {
+      el.className = 'text-sm rounded-lg px-3 py-2 bg-green-50 text-green-700 border border-green-200';
+    } else {
+      el.className = 'text-sm rounded-lg px-3 py-2 bg-red-50 text-red-600 border border-red-200';
+    }
+    el.textContent = data.message;
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  }
+  function sBadge(s) {
+    const m = {
+      pending:'badge-pending', approved:'badge-approved', rejected:'badge-rejected',
+      provisioned:'badge-provisioned', decommissioning:'badge-decommissioning',
+      decommissioned:'badge-decommissioned',
+    };
+    return `<span class="badge ${m[s]||'badge-pending'}">${s}</span>`;
+  }
+  function tfBadge(s) {
+    if (!s) return '<span class="text-xs text-slate-300">—</span>';
+    const m = {
+      pending:   'bg-slate-100 text-slate-500',
+      running:   'bg-blue-100 text-blue-700',
+      succeeded: 'bg-green-100 text-green-700',
+      failed:    'bg-red-100 text-red-700',
+    };
+    return `<span class="text-xs font-medium px-2 py-0.5 rounded-full ${m[s]||'bg-slate-100 text-slate-500'}">${s}</span>`;
+  }
+  function evtBadge(e) {
+    const c = { REQUEST_CREATED:'bg-slate-100 text-slate-600', REQUEST_APPROVED:'bg-green-50 text-green-700', REQUEST_REJECTED:'bg-red-50 text-red-700', REQUEST_PROVISIONED:'bg-blue-50 text-blue-700', POLICY_UPDATED:'bg-purple-50 text-purple-700', GITOPS_CONFIGURED:'bg-indigo-50 text-indigo-700' };
+    return `<span class="badge ${c[e]||'bg-slate-100 text-slate-600'}">${e.replace(/_/g,' ')}</span>`;
+  }
+  const catColors = { compute:'bg-blue-50 text-blue-600', database:'bg-violet-50 text-violet-600', storage:'bg-amber-50 text-amber-600', network:'bg-green-50 text-green-600' };
+  const catEmoji  = { compute:'⚙️', database:'🗄️', storage:'📦', network:'🌐' };
+
+  // ── Load all ─────────────────────────────────────────────────────────────
+  async function loadAll() {
+    const [rr, tr] = await Promise.all([
+      api('/api/requests/'),
+      api('/api/templates/'),
+    ]);
+    if (rr?.ok) allRequests  = await rr.json();
+    if (tr?.ok) allTemplates = await tr.json();
+    renderOverview();
+  }
+
+  async function loadOverview() {
+    const res = await api('/api/requests/');
+    if (res?.ok) allRequests = await res.json();
+    renderOverview();
+  }
+
+  // ── Overview ─────────────────────────────────────────────────────────────
+  function renderOverview() {
+    const isProvisioned = r =>
+      (r.status === 'provisioned' || r.terraformRunStatus === 'succeeded')
+      && r.status !== 'decommissioned' && r.status !== 'decommissioning';
+    document.getElementById('stat-total').textContent       = allRequests.length;
+    document.getElementById('stat-pending').textContent     = allRequests.filter(r=>r.status==='pending').length;
+    document.getElementById('stat-provisioned').textContent = allRequests.filter(isProvisioned).length;
+    const cost = allRequests.filter(isProvisioned).reduce((s,r)=>s+parseFloat(r.cost||0),0);
+    document.getElementById('stat-cost').textContent = `$${cost.toFixed(2)}`;
+    const el = document.getElementById('overview-requests');
+    const recent = allRequests.slice(0,5);
+    if (!recent.length) { el.innerHTML = `<p class="px-5 py-8 text-center text-sm text-slate-400">No requests yet.</p>`; return; }
+    el.innerHTML = recent.map(r => {
+      const t = allTemplates.find(x=>x.id===r.templateId);
+      return `<div class="flex items-center justify-between px-5 py-3 border-t border-slate-100 first:border-0">
+        <div><p class="text-sm font-medium text-slate-800">${t?.name||r.templateId}</p>
+          <p class="text-xs text-slate-400 mt-0.5">${r.region} · ${fmtDate(r.createdAt)}</p></div>
+        <div class="flex items-center gap-3"><span class="text-sm text-slate-500">$${parseFloat(r.cost).toFixed(2)}</span>${sBadge(r.status)}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Catalog ──────────────────────────────────────────────────────────────
+  function renderCatalog() {
+    const g = document.getElementById('catalog-grid');
+    if (!allTemplates.length) { g.innerHTML = `<div class="col-span-full py-10 text-center text-sm text-slate-400">No templates.</div>`; return; }
+    g.innerHTML = allTemplates.map(t => `
+      <div class="card p-4 hover:border-slate-300 transition-colors">
+        <div class="flex items-start gap-3">
+          <div class="w-9 h-9 rounded-lg ${catColors[t.category]||'bg-slate-100'} flex items-center justify-center flex-shrink-0 text-base">${catEmoji[t.category]||'📦'}</div>
+          <div><p class="text-sm font-semibold text-slate-900">${t.name}</p><p class="text-xs text-slate-500 mt-0.5 leading-relaxed">${t.description}</p></div>
+        </div>
+        <div class="flex items-center justify-between mt-4 pt-3.5 border-t border-slate-100">
+          <span class="text-xs text-slate-400 capitalize">${t.category}</span>
+          <div class="flex items-center gap-2.5">
+            <span class="text-sm font-semibold text-slate-900">$${parseFloat(t.estimatedCost).toFixed(2)}<span class="text-xs font-normal text-slate-400">/mo</span></span>
+            <button onclick="openRequestModalWithTemplate('${t.id}')" class="text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded-md transition-colors">Request</button>
+          </div>
+        </div>
+      </div>`).join('');
+  }
+
+  // ── Requests table ────────────────────────────────────────────────────────
+  async function loadRequests() {
+    const res = await api('/api/requests/');
+    if (res?.ok) { allRequests = await res.json(); renderOverview(); }
+    renderRequestsTable();
+  }
+
+  function renderRequestsTable() {
+    const b = document.getElementById('requests-tbody');
+    if (!allRequests.length) { b.innerHTML = `<tr><td colspan="7" class="text-center py-10 text-slate-400">No requests yet.</td></tr>`; return; }
+    b.innerHTML = allRequests.map(r => {
+      const t = allTemplates.find(x=>x.id===r.templateId);
+      const githubBtn = r.resourceGithubUrl
+        ? `<a href="${r.resourceGithubUrl}" target="_blank"
+              class="inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-slate-900 border border-slate-200 hover:border-slate-400 rounded px-2 py-1 transition-colors whitespace-nowrap">
+             <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844a9.59 9.59 0 012.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+             Commit
+           </a>`
+        : '';
+      const logsBtn = r.terraformRunId
+        ? `<button onclick="openTfRunModal('${r.terraformRunId}')"
+                   class="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 border border-blue-200 hover:border-blue-400 rounded px-2 py-1 transition-colors whitespace-nowrap">
+             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+             Logs
+           </button>`
+        : '';
+      const outputsBtn = r.terraformRunStatus === 'succeeded'
+        ? `<button onclick="openOutputsModal('${r.id}')"
+                   class="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-800 border border-emerald-200 hover:border-emerald-400 rounded px-2 py-1 transition-colors whitespace-nowrap">
+             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+             Outputs
+           </button>`
+        : '';
+      const decommBtn = isPriv && r.terraformRunStatus === 'succeeded'
+          && r.status !== 'decommissioned' && r.status !== 'decommissioning'
+        ? `<button onclick="decommissionRequest('${r.id}')"
+                   class="inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-800 border border-red-200 hover:border-red-400 rounded px-2 py-1 transition-colors whitespace-nowrap">
+             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+             Decommission
+           </button>`
+        : '';
+      return `<tr>
+        <td class="font-mono text-xs font-semibold text-slate-600">${r.id}</td>
+        <td class="font-medium text-slate-800">${t?.name||r.templateId}</td>
+        <td>$${parseFloat(r.cost).toFixed(2)}</td>
+        <td>${sBadge(r.status)}</td>
+        <td>${tfBadge(r.terraformRunStatus)}</td>
+        <td class="text-slate-400 text-xs">${fmtDate(r.createdAt)}</td>
+        <td class="text-right"><div class="flex items-center justify-end gap-2">${githubBtn}${outputsBtn}${logsBtn}${decommBtn}</div></td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Approvals ─────────────────────────────────────────────────────────────
+  async function renderApprovals() {
+    const el = document.getElementById('approvals-list');
+    if (!isPriv) { el.innerHTML = `<div class="px-5 py-8 text-center text-sm text-slate-400">Restricted to architects and admins.</div>`; return; }
+    const res = await api('/api/requests/');
+    if (!res?.ok) return;
+    const pending = (await res.json()).filter(r=>r.status==='pending');
+    if (!pending.length) { el.innerHTML = `<div class="px-5 py-8 text-center text-sm text-slate-400">No pending approvals.</div>`; return; }
+    el.innerHTML = pending.map(r => {
+      const t = allTemplates.find(x=>x.id===r.templateId);
+      return `<div class="px-5 py-4" id="appr-${r.id}">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-sm font-semibold text-slate-900">${t?.name||r.templateId} <span class="font-mono text-xs font-normal text-slate-400">${r.id}</span></p>
+            <p class="text-xs text-slate-500 mt-1">${r.userName} · ${r.team} · ${r.region} · <strong class="text-slate-700">$${parseFloat(r.cost).toFixed(2)}/mo</strong></p>
+            <p class="text-xs text-slate-400 mt-1 italic">"${r.justification}"</p>
+          </div>
+          <div class="flex gap-2 flex-shrink-0">
+            <button onclick="reviewReq('${r.id}','approved')" class="text-xs font-medium bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 px-3 py-1.5 rounded-lg transition-colors">Approve</button>
+            <button onclick="reviewReq('${r.id}','rejected')" class="text-xs font-medium bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-3 py-1.5 rounded-lg transition-colors">Reject</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  async function reviewReq(id, status) {
+    const res = await api(`/api/requests/${id}/`, { method:'PATCH', body: JSON.stringify({ status }) });
+    if (!res?.ok) { toast('Failed to update request.', 'error'); return; }
+    const updated = await res.json();
+    allRequests = allRequests.map(r => r.id===id ? updated : r);
+    renderRequestsTable();
+    document.getElementById(`appr-${id}`)?.remove();
+    const el = document.getElementById('approvals-list');
+    if (!el.querySelector('[id^=appr-]')) el.innerHTML = `<div class="px-5 py-8 text-center text-sm text-slate-400">No pending approvals.</div>`;
+    renderOverview();
+    if (updated.resourceRendered && status === 'approved') {
+      if (updated.resourceGithubUrl) {
+        toast('Pushed to GitHub — <a href="' + updated.resourceGithubUrl + '" target="_blank" class="underline text-blue-600">View ' + id + '</a>', 'success', 6000);
+      } else {
+        toast(id + ' approved — <a href="/api/requests/' + id + '/resource/" class="underline text-blue-600">Download ZIP</a>', 'success', 6000);
+      }
+      if (updated.terraformRunId) pollTerraformRun(updated.terraformRunId, id);
+    } else {
+      toast(`${id} ${status === 'approved' ? 'approved' : 'rejected'}.`, status === 'approved' ? 'success' : 'warning');
+    }
+  }
+
+  // ── Terraform run viewer ──────────────────────────────────────────────────
+  let _currentTfRunId  = null;
+  let _currentRunType  = null;
+  let _tfRefreshTimer  = null;
+
+  function openTfRunModal(runId) {
+    _currentTfRunId = runId;
+    document.getElementById('tf-modal-req').textContent    = '';
+    document.getElementById('tf-modal-team').textContent   = '';
+    document.getElementById('tf-modal-logs').textContent   = 'Connecting…';
+    document.getElementById('tf-modal-note').textContent   = '';
+    const sb = document.getElementById('tf-modal-summary-bar');
+    sb.textContent = ''; sb.classList.add('hidden');
+    _setTfModalStatus('pending');
+    document.getElementById('tf-run-modal').classList.remove('hidden');
+    _tfRunRefresh();
+  }
+
+  function closeTfRunModal() {
+    if (_tfRefreshTimer) { clearTimeout(_tfRefreshTimer); _tfRefreshTimer = null; }
+    document.getElementById('tf-run-modal').classList.add('hidden');
+    _currentTfRunId = null;
+    _currentRunType = null;
+  }
+
+  async function _tfRunRefresh() {
+    if (!_currentTfRunId) return;
+    if (_tfRefreshTimer) { clearTimeout(_tfRefreshTimer); _tfRefreshTimer = null; }
+    try {
+      const res = await api('/api/terraform/runs/' + _currentTfRunId + '/logs/');
+      if (!res?.ok) { _schedTfRefresh(); return; }
+      const data = await res.json();
+
+      // header meta
+      if (data.req_id)   document.getElementById('tf-modal-req').textContent  = data.req_id;
+      if (data.team)     document.getElementById('tf-modal-team').textContent = data.team;
+      if (data.run_type) _currentRunType = data.run_type;
+      _setTfModalStatus(data.status);
+
+      // summary bar
+      const sb = document.getElementById('tf-modal-summary-bar');
+      if (data.summary) {
+        sb.textContent = data.summary;
+        sb.classList.remove('hidden');
+      }
+
+      // logs — auto-scroll to bottom while running
+      const logEl  = document.getElementById('tf-modal-logs');
+      const atEnd  = logEl.scrollHeight - logEl.scrollTop <= logEl.clientHeight + 60;
+      logEl.textContent = data.logs || '(no output yet)';
+      if (atEnd || data.status === 'pending' || data.status === 'running') {
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      // footer note
+      const note = document.getElementById('tf-modal-note');
+      if (data.status === 'running' || data.status === 'pending') {
+        note.textContent = 'Auto-refreshing every 2 s…';
+        _schedTfRefresh();
+      } else if (data.status === 'succeeded') {
+        note.textContent = data.exit_code != null ? 'Exit 0 — deployment succeeded.' : '';
+      } else if (data.status === 'failed') {
+        note.textContent = data.exit_code != null ? 'Exit ' + data.exit_code + ' — deployment failed.' : 'Deployment failed.';
+      }
+    } catch(e) { _schedTfRefresh(); }
+  }
+
+  function _schedTfRefresh() {
+    if (_currentTfRunId) _tfRefreshTimer = setTimeout(_tfRunRefresh, 2000);
+  }
+
+  function _setTfModalStatus(s) {
+    const el = document.getElementById('tf-modal-status');
+    const cfg = {
+      pending:   ['Pending',   'bg-slate-100 text-slate-600'],
+      running:   ['Running…',  'bg-blue-100 text-blue-700'],
+      succeeded: ['Succeeded', 'bg-green-100 text-green-700'],
+      failed:    ['Failed',    'bg-red-100 text-red-700'],
+    }[s] || ['Unknown', 'bg-slate-100 text-slate-500'];
+    el.textContent  = cfg[0];
+    el.className    = 'text-xs font-semibold px-2.5 py-1 rounded-full ' + cfg[1];
+    const retryBtn = document.getElementById('tf-modal-retry-btn');
+    if (retryBtn) retryBtn.classList.toggle('hidden', s !== 'failed');
+    const decommModalBtn = document.getElementById('tf-modal-decomm-btn');
+    if (decommModalBtn) decommModalBtn.classList.toggle('hidden', !(s === 'succeeded' && _currentRunType === 'apply'));
+  }
+
+  async function retryDeployment() {
+    const reqId = document.getElementById('tf-modal-req').textContent.trim();
+    if (!reqId) return;
+    const retryBtn = document.getElementById('tf-modal-retry-btn');
+    retryBtn.disabled = true;
+    retryBtn.textContent = 'Retrying…';
+    const res = await api(`/api/requests/${reqId}/retry/`, { method: 'POST' });
+    retryBtn.disabled = false;
+    retryBtn.textContent = 'Retry deployment';
+    if (!res?.ok) {
+      const err = await res?.json().catch(() => ({}));
+      toast(err?.detail || 'Retry failed.', 'error');
+      return;
+    }
+    const run = await res.json();
+    // Reload the modal with the new run
+    openTfRunModal(run.id);
+    pollTerraformRun(run.id, reqId);
+    // Refresh requests table so the new terraformRunId is reflected
+    loadRequests();
+  }
+
+  async function decommissionRequest(reqId) {
+    if (!confirm(`Decommission ${reqId}?\n\nThis will run terraform destroy, delete the GitHub folder, and remove the Terraform state. This cannot be undone.`)) return;
+    const res = await api(`/api/requests/${reqId}/decommission/`, { method: 'POST' });
+    if (!res?.ok) {
+      const err = await res?.json().catch(() => ({}));
+      toast(err?.detail || 'Decommission failed.', 'error');
+      return;
+    }
+    const run = await res.json();
+    toast(`${reqId} decommissioning started.`, 'info');
+    openTfRunModal(run.id);
+    pollTerraformRun(run.id, reqId);
+    loadRequests();
+  }
+
+  // ── Templates ─────────────────────────────────────────────────────────────
+  let _editingTemplateId = null;
+
+  async function loadTemplates() {
+    const b = document.getElementById('templates-tbody');
+    if (!b) return;
+    b.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">Loading…</td></tr>`;
+    const res = await api('/api/templates/');
+    if (!res?.ok) {
+      const detail = await res?.text().catch(() => '');
+      console.error('loadTemplates failed', res?.status, detail);
+      b.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">Failed to load (${res?.status || 'network error'}).</td></tr>`;
+      return;
+    }
+    const templates = await res.json();
+    if (!templates.length) { b.innerHTML = `<tr><td colspan="6" class="text-center py-10 text-slate-400">No templates yet.</td></tr>`; return; }
+    b.innerHTML = templates.map(t => {
+      const paramCount = t.parameters ? Object.keys(t.parameters).length : 0;
+      return `<tr class="border-t border-slate-100 hover:bg-slate-50">
+        <td class="px-4 py-3 font-mono text-xs text-slate-500">${t.id}</td>
+        <td class="px-4 py-3 font-medium text-slate-800">${t.name}</td>
+        <td class="px-4 py-3 text-sm text-slate-500 capitalize">${t.category || '—'}</td>
+        <td class="px-4 py-3 text-sm text-slate-500">$${parseFloat(t.estimatedCost || t.estimated_cost || 0).toFixed(2)}</td>
+        <td class="px-4 py-3 text-sm text-slate-400">${paramCount} param${paramCount !== 1 ? 's' : ''}</td>
+        <td class="px-4 py-3 text-right">
+          <div class="flex items-center justify-end gap-3">
+            <button onclick="editTemplate('${t.id}')" class="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline">Edit</button>
+            <button onclick="deleteTemplate('${t.id}', '${t.name.replace(/'/g, "\\'")}')" class="text-xs font-medium text-red-500 hover:text-red-700 hover:underline">Delete</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  function openTemplateModal(data) {
+    _editingTemplateId = data?.id || null;
+    document.getElementById('tmpl-modal-title').textContent = _editingTemplateId ? 'Edit template' : 'New template';
+    document.getElementById('tmpl-id').value          = data?.id || '';
+    document.getElementById('tmpl-id').readOnly       = !!_editingTemplateId;
+    document.getElementById('tmpl-name').value        = data?.name || '';
+    document.getElementById('tmpl-description').value = data?.description || '';
+    document.getElementById('tmpl-category').value    = data?.category || '';
+    document.getElementById('tmpl-icon').value        = data?.icon || 'server';
+    document.getElementById('tmpl-cost').value        = data?.estimatedCost ?? data?.estimated_cost ?? '';
+    document.getElementById('tmpl-cost-note').value   = data?.costNote || '';
+    document.getElementById('tmpl-tf').value          = data?.tfContent || '';
+    document.getElementById('tmpl-params').value      = data?.parameters ? JSON.stringify(data.parameters, null, 2) : '';
+    document.getElementById('tmpl-modal-err').textContent = '';
+    document.getElementById('tmpl-save-btn').disabled = false;
+    document.getElementById('template-modal').classList.remove('hidden');
+  }
+
+  function closeTemplateModal() {
+    document.getElementById('template-modal').classList.add('hidden');
+    _editingTemplateId = null;
+  }
+
+  async function editTemplate(id) {
+    const res = await api(`/api/templates/${id}/`);
+    if (!res?.ok) { toast('Could not load template.', 'error'); return; }
+    openTemplateModal(await res.json());
+  }
+
+  async function saveTemplate() {
+    const btn = document.getElementById('tmpl-save-btn');
+    const errEl = document.getElementById('tmpl-modal-err');
+    errEl.textContent = '';
+
+    const id          = document.getElementById('tmpl-id').value.trim();
+    const name        = document.getElementById('tmpl-name').value.trim();
+    const description = document.getElementById('tmpl-description').value.trim();
+    const category    = document.getElementById('tmpl-category').value.trim();
+    const icon        = document.getElementById('tmpl-icon').value.trim();
+    const cost        = parseFloat(document.getElementById('tmpl-cost').value) || 0;
+    const costNote    = document.getElementById('tmpl-cost-note').value.trim();
+    const tfContent   = document.getElementById('tmpl-tf').value;
+    const paramsRaw   = document.getElementById('tmpl-params').value.trim();
+
+    if (!id || !name) { errEl.textContent = 'ID and Name are required.'; return; }
+
+    let parameters = {};
+    if (paramsRaw) {
+      try { parameters = JSON.parse(paramsRaw); }
+      catch(e) { errEl.textContent = 'Parameters JSON is invalid: ' + e.message; return; }
+    }
+
+    const body = { id, name, description, category, icon,
+                   estimatedCost: cost, costNote, tfContent, parameters };
+
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    const url    = _editingTemplateId ? `/api/templates/${_editingTemplateId}/` : '/api/templates/';
+    const method = _editingTemplateId ? 'PUT' : 'POST';
+    const res = await api(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    btn.disabled = false;
+    btn.textContent = 'Save template';
+
+    if (!res?.ok) {
+      const err = await res?.json().catch(() => ({}));
+      errEl.textContent = err?.detail || 'Save failed.';
+      return;
+    }
+    toast(`Template ${_editingTemplateId ? 'updated' : 'created'}.`, 'success');
+    closeTemplateModal();
+    loadTemplates();
+    // Refresh catalog so new request modal sees it
+    const catRes = await api('/api/templates/');
+    if (catRes?.ok) allTemplates = await catRes.json();
+  }
+
+  async function deleteTemplate(id, name) {
+    if (!confirm(`Delete template "${name}"?\n\nThis removes the files from disk. Existing requests using this template are unaffected.`)) return;
+    const res = await api(`/api/templates/${id}/`, { method: 'DELETE' });
+    if (!res?.ok && res?.status !== 204) {
+      const err = await res?.json().catch(() => ({}));
+      toast(err?.detail || 'Delete failed.', 'error');
+      return;
+    }
+    toast(`Template "${name}" deleted.`, 'success');
+    loadTemplates();
+    const catRes = await api('/api/templates/');
+    if (catRes?.ok) allTemplates = await catRes.json();
+  }
+
+  // ── Outputs modal ─────────────────────────────────────────────────────────
+  async function openOutputsModal(reqId) {
+    document.getElementById('outputs-modal-req').textContent = reqId;
+    document.getElementById('outputs-modal-body').innerHTML =
+      '<p class="text-sm text-slate-400 text-center py-6">Loading…</p>';
+    document.getElementById('outputs-modal').classList.remove('hidden');
+
+    const res = await api(`/api/requests/${reqId}/outputs/`);
+    const body = document.getElementById('outputs-modal-body');
+    if (!res?.ok) {
+      const err = await res?.json().catch(() => ({}));
+      body.innerHTML = `<p class="text-sm text-red-500 text-center py-6">${err?.detail || 'Failed to load outputs.'}</p>`;
+      return;
+    }
+    const data = await res.json();
+    if (!data.outputs?.length) {
+      body.innerHTML = '<p class="text-sm text-slate-400 text-center py-6">No outputs recorded for this deployment.</p>';
+      return;
+    }
+    body.innerHTML = `
+      <table class="w-full text-sm">
+        <thead><tr class="border-b border-slate-100">
+          <th class="text-left py-2 pr-4 text-xs font-semibold text-slate-500 w-1/3">Output</th>
+          <th class="text-left py-2 text-xs font-semibold text-slate-500">Value</th>
+        </tr></thead>
+        <tbody>
+          ${data.outputs.map(o => `
+            <tr class="border-b border-slate-50 last:border-0">
+              <td class="py-2 pr-4 font-mono text-xs text-slate-500">${o.key}</td>
+              <td class="py-2 font-mono text-xs text-slate-800 break-all">${o.value}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  function closeOutputsModal() {
+    document.getElementById('outputs-modal').classList.add('hidden');
+  }
+
+  // ── Terraform run background polling (toasts) ─────────────────────────────
+  function pollTerraformRun(runId, reqId) {
+    toast(
+      (reqId || 'Request') + ' — Terraform deploying… <a href="#" onclick="openTfRunModal(\'' + runId + '\');return false;" class="underline text-blue-600">View</a>',
+      'info', 6000
+    );
+    const MAX = 72;
+    let polls = 0;
+    function check() {
+      if (++polls > MAX) { toast('Terraform run timed out.', 'warning', 6000); return; }
+      api('/api/terraform/runs/' + runId + '/').then(function(res) {
+        if (!res?.ok) { setTimeout(check, 5000); return; }
+        res.json().then(function(run) {
+          if (run.status === 'succeeded') {
+            toast(
+              (reqId || run.req_id || 'Terraform') + ' deployed. <a href="#" onclick="openTfRunModal(\'' + runId + '\');return false;" class="underline text-blue-600">View logs</a>',
+              'success', 8000
+            );
+          } else if (run.status === 'failed') {
+            toast(
+              (reqId || run.req_id || 'Terraform') + ' deploy failed. <a href="#" onclick="openTfRunModal(\'' + runId + '\');return false;" class="underline text-blue-600">View logs</a>',
+              'error', 8000
+            );
+          } else {
+            setTimeout(check, 5000);
+          }
+        });
+      }).catch(function() { setTimeout(check, 5000); });
+    }
+    setTimeout(check, 5000);
+  }
+
+  async function downloadTfLogs(runId) {
+    if (!runId) return;
+    const res = await api('/api/terraform/runs/' + runId + '/logs/');
+    if (!res?.ok) { toast('Could not fetch logs.', 'error'); return; }
+    const data = await res.json();
+    const name = (data.req_id || runId) + '-terraform.log';
+    const text = 'Request : ' + (data.req_id || '—') + '\nTeam    : ' + (data.team || '—') +
+                 '\nStatus  : ' + data.status + '\nExit    : ' + data.exit_code + '\n\n' + (data.logs || '');
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // ── CONFIGURATION: Users ──────────────────────────────────────────────────
+  async function loadUsers() {
+    const res = await api('/api/auth/users/');
+    if (!res?.ok) return;
+    const users = await res.json();
+    const b = document.getElementById('users-tbody');
+    var rows = '';
+    for (var i = 0; i < users.length; i++) {
+      var u = users[i];
+      var roleColor = u.role==='admin'?'bg-rose-50 text-rose-700':u.role==='architect'?'bg-purple-50 text-purple-700':'bg-blue-50 text-blue-700';
+      rows += '<tr>';
+      rows += '<td><p class="font-medium text-slate-800">' + u.name + '</p><p class="text-xs text-slate-400">@' + u.username + '</p></td>';
+      rows += '<td class="text-slate-500">' + u.email + '</td>';
+      rows += '<td><span class="badge ' + roleColor + '">' + u.role + '</span></td>';
+      rows += '<td class="text-slate-500">' + (u.team||'—') + '</td>';
+      rows += '<td class="text-right pr-4 space-x-2">';
+      if (isAdmin) {
+        rows += '<button onclick="openUserEdit(\'' + u.id + '\',\'' + (u.first_name||'') + '\',\'' + (u.last_name||'') + '\',\'' + u.role + '\',\'' + (u.team||'') + '\')" class="btn-secondary text-xs py-1 px-2.5">Edit</button>';
+        rows += '<button onclick="deactivateUser(\'' + u.id + '\',\'' + u.username + '\')" class="btn-danger">Deactivate</button>';
+      }
+      rows += '</td></tr>';
+    }
+    b.innerHTML = rows;
+  }
+
+  function toggleUserForm() {
+    const w = document.getElementById('user-form-wrap');
+    w.classList.toggle('hidden');
+    if (!w.classList.contains('hidden')) {
+      // populate team dropdown
+      const sel = document.getElementById('u-team');
+      sel.innerHTML = '<option value="">No team</option>';
+      allTeams.forEach(t => { const o = new Option(t.name, t.name); sel.add(o); });
+    }
+  }
+
+  async function createUser(e) {
+    e.preventDefault();
+    const err = document.getElementById('user-form-error');
+    err.classList.add('hidden');
+    const body = {
+      username: document.getElementById('u-username').value.trim(),
+      email: document.getElementById('u-email').value.trim(),
+      password: document.getElementById('u-password').value,
+      first_name: document.getElementById('u-first').value.trim(),
+      last_name: document.getElementById('u-last').value.trim(),
+      role: document.getElementById('u-role').value,
+      team: document.getElementById('u-team').value,
+    };
+    const res = await api('/api/auth/register/', { method:'POST', body: JSON.stringify(body) });
+    if (!res) return;
+    const data = await res.json();
+    if (!res.ok) { err.textContent = data.detail || JSON.stringify(data); err.classList.remove('hidden'); return; }
+    document.getElementById('user-create-form').reset();
+    document.getElementById('user-form-wrap').classList.add('hidden');
+    toast('User created.', 'success');
+    loadUsers();
+  }
+
+  function openUserEdit(id, first, last, role, team) {
+    document.getElementById('ue-id').value = id;
+    document.getElementById('ue-first').value = first;
+    document.getElementById('ue-last').value = last;
+    document.getElementById('ue-role').value = role;
+    var sel = document.getElementById('ue-team');
+    sel.innerHTML = '<option value="">No team</option>';
+    allTeams.forEach(function(t) { sel.add(new Option(t.name, t.name)); });
+    sel.value = team;
+    document.getElementById('user-edit-modal').classList.remove('hidden');
+  }
+  function closeUserEdit() { document.getElementById('user-edit-modal').classList.add('hidden'); }
+  async function saveUserEdit(e) {
+    e.preventDefault();
+    var id = document.getElementById('ue-id').value;
+    var body = {
+      first_name: document.getElementById('ue-first').value.trim(),
+      last_name:  document.getElementById('ue-last').value.trim(),
+      role:       document.getElementById('ue-role').value,
+      team:       document.getElementById('ue-team').value,
+    };
+    const r = await api('/api/auth/users/' + id + '/', { method:'PATCH', body: JSON.stringify(body) });
+    closeUserEdit();
+    if (r?.ok) toast('User updated.', 'success'); else toast('Failed to update user.', 'error');
+    loadUsers();
+  }
+
+  async function deactivateUser(id, username) {
+    if (!confirm('Deactivate user "' + username + '"?')) return;
+    const r = await api('/api/auth/users/' + id + '/', { method:'DELETE' });
+    if (r?.ok) toast('User "' + username + '" deactivated.', 'warning'); else toast('Failed to deactivate user.', 'error');
+    loadUsers();
+  }
+
+  // ── CONFIGURATION: Teams ──────────────────────────────────────────────────
+  async function loadTeams() {
+    const res = await api('/api/teams/');
+    if (!res?.ok) return;
+    allTeams = await res.json();
+    renderTeamsTable();
+  }
+
+  function renderTeamsTable() {
+    var b = document.getElementById('teams-tbody');
+    if (!allTeams.length) { b.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-400">No teams yet. Create one first.</td></tr>'; return; }
+    var rows = '';
+    allTeams.forEach(function(t) {
+      var threshold = t.approval_threshold != null ? '$' + parseFloat(t.approval_threshold).toLocaleString() : '$100';
+      rows += '<tr>';
+      rows += '<td class="font-semibold text-slate-800">' + t.name + '</td>';
+      rows += '<td class="text-slate-500">' + (t.description || '—') + '</td>';
+      rows += '<td><span class="font-semibold text-slate-900">$' + parseFloat(t.budget).toLocaleString() + '</span><span class="text-xs text-slate-400">/mo</span></td>';
+      rows += '<td class="text-slate-600 text-sm">' + threshold + '</td>';
+      rows += '<td class="text-slate-400 text-xs">' + fmtDate(t.created_at) + '</td>';
+      rows += '<td class="text-right pr-4 space-x-2">';
+      rows += '<button onclick="openTeamEdit(\'' + t.id + '\',\'' + t.name.replace(/'/g,"\\'") + '\',\'' + (t.description||'').replace(/'/g,"\\'") + '\',' + t.budget + ',' + (t.approval_threshold||100) + ')" class="btn-secondary text-xs py-1 px-2.5">Edit</button>';
+      rows += '<button onclick="deleteTeam(\'' + t.id + '\',\'' + t.name.replace(/'/g,"\\'") + '\')" class="btn-danger">Delete</button>';
+      rows += '</td></tr>';
+    });
+    b.innerHTML = rows;
+  }
+
+  function toggleTeamForm() { document.getElementById('team-form-wrap').classList.toggle('hidden'); }
+
+  async function createTeam(e) {
+    e.preventDefault();
+    const err = document.getElementById('team-form-error');
+    err.classList.add('hidden');
+    const body = { name: document.getElementById('t-name').value.trim(), description: document.getElementById('t-desc').value.trim(), budget: parseFloat(document.getElementById('t-budget').value||0), approval_threshold: parseFloat(document.getElementById('t-threshold').value||100) };
+    if (!body.name) { err.textContent='Name is required.'; err.classList.remove('hidden'); return; }
+    const res = await api('/api/teams/', { method:'POST', body: JSON.stringify(body) });
+    if (!res.ok) { const d=await res.json(); err.textContent=d.name?.[0]||JSON.stringify(d); err.classList.remove('hidden'); return; }
+    document.getElementById('team-create-form').reset();
+    document.getElementById('team-form-wrap').classList.add('hidden');
+    toast('Team created.', 'success');
+    loadTeams();
+  }
+
+  function openTeamEdit(id, name, desc, budget, threshold) {
+    document.getElementById('te-id').value = id;
+    document.getElementById('te-name').value = name;
+    document.getElementById('te-desc').value = desc;
+    document.getElementById('te-budget').value = budget;
+    document.getElementById('te-threshold').value = threshold != null ? threshold : 100;
+    document.getElementById('team-edit-modal').classList.remove('hidden');
+  }
+  function closeTeamEdit() { document.getElementById('team-edit-modal').classList.add('hidden'); }
+  async function saveTeamEdit(e) {
+    e.preventDefault();
+    const id = document.getElementById('te-id').value;
+    const body = { name: document.getElementById('te-name').value.trim(), description: document.getElementById('te-desc').value.trim(), budget: parseFloat(document.getElementById('te-budget').value||0), approval_threshold: parseFloat(document.getElementById('te-threshold').value||100) };
+    const r = await api(`/api/teams/${id}/`, { method:'PATCH', body: JSON.stringify(body) });
+    closeTeamEdit();
+    if (r?.ok) toast('Team updated.', 'success'); else toast('Failed to update team.', 'error');
+    loadTeams();
+  }
+  async function deleteTeam(id, name) {
+    if (!confirm('Delete team "' + name + '"?')) return;
+    const r = await api('/api/teams/' + id + '/', { method:'DELETE' });
+    if (r?.ok) toast('Team "' + name + '" deleted.', 'warning'); else toast('Failed to delete team.', 'error');
+    loadTeams();
+  }
+
+  // ── CONFIGURATION: RBAC ──────────────────────────────────────────────────
+  async function loadRbac() {
+    const res = await api('/api/auth/roles/');
+    if (!res?.ok) return;
+    rbacData = await res.json();
+    renderRbacMatrix();
+  }
+
+  function renderRbacMatrix() {
+    const wrap = document.getElementById('rbac-matrix');
+    if (!rbacData.length) { wrap.innerHTML = '<p class="p-6 text-sm text-slate-400">No roles found.</p>'; return; }
+
+    const allPerms = rbacData[0].all_permissions || [];
+    const roles = rbacData.map(r => r.name);
+
+    const permLabels = {
+      view_catalog:'View catalog', create_request:'Create request', view_own_requests:'View own requests',
+      view_requests_all:'View all requests', approve_request:'Approve request', reject_request:'Reject request',
+      provision_request:'Provision request', view_audit:'View audit log',
+      view_deployments:'View deployments', manage_gitops:'Configure GitOps', view_users:'View users', manage_users:'Manage users',
+    };
+
+    // Build HTML with string concat to avoid triple-nested template literals
+    var html = '<table class="w-full">';
+    html += '<thead class="bg-slate-50 border-b border-slate-200"><tr>';
+    html += '<th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Permission</th>';
+    for (var ri = 0; ri < roles.length; ri++) {
+      var r = roles[ri];
+      var color = r === 'admin' ? 'text-rose-500' : r === 'architect' ? 'text-purple-500' : 'text-blue-500';
+      html += '<th class="px-5 py-3 text-xs font-semibold uppercase tracking-wider text-center ' + color + '">' + r + '</th>';
+    }
+    html += '</tr></thead><tbody>';
+    for (var pi = 0; pi < allPerms.length; pi++) {
+      var perm = allPerms[pi];
+      html += '<tr class="border-t border-slate-100 hover:bg-slate-50">';
+      html += '<td class="px-5 py-2.5 text-sm text-slate-700">' + (permLabels[perm] || perm) + '</td>';
+      for (var ci = 0; ci < roles.length; ci++) {
+        var role = roles[ci];
+        var rdata = rbacData.find(function(x){ return x.name === role; });
+        var checked = rdata && (rdata.permissions.indexOf('*') >= 0 || rdata.permissions.indexOf(perm) >= 0);
+        var isWildcard = rdata && rdata.permissions.indexOf('*') >= 0;
+        html += '<td class="px-5 py-2.5 text-center">';
+        html += '<input type="checkbox" class="perm-check" data-role="' + role + '" data-perm="' + perm + '"';
+        if (checked) html += ' checked';
+        if (isWildcard) html += ' disabled title="Admin: all permissions"';
+        html += ' /></td>';
+      }
+      html += '</tr>';
+    }
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+
+    const saveRow = document.getElementById('rbac-save-row');
+    if (isAdmin) saveRow.style.display = 'flex';
+  }
+
+  async function saveRbac() {
+    const roles = rbacData.map(r=>r.name);
+    for (const role of roles) {
+      if (role === 'admin') continue;  // admin keeps wildcard
+      const checkboxes = document.querySelectorAll(`.perm-check[data-role="${role}"]`);
+      const perms = Array.from(checkboxes).filter(c=>c.checked).map(c=>c.dataset.perm);
+      await api(`/api/auth/roles/${role}/`, { method:'PUT', body: JSON.stringify({ permissions: perms }) });
+    }
+    toast('RBAC permissions saved.', 'success');
+    loadRbac();
+  }
+
+  // ── Deployments ───────────────────────────────────────────────────────────
+  function _deployStatusBadge(s) {
+    const cfg = {
+      pending:   ['Pending',   'bg-slate-100 text-slate-600'],
+      running:   ['Running',   'bg-blue-100  text-blue-700'],
+      succeeded: ['Succeeded', 'bg-green-100 text-green-700'],
+      failed:    ['Failed',    'bg-red-100   text-red-700'],
+    }[s] || ['Unknown', 'bg-slate-100 text-slate-500'];
+    return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${cfg[1]}">${cfg[0]}</span>`;
+  }
+
+  function _deployDuration(run) {
+    if (!run.started_at) return '—';
+    const end = run.finished_at ? new Date(run.finished_at) : new Date();
+    const secs = Math.round((end - new Date(run.started_at)) / 1000);
+    if (secs < 60) return secs + 's';
+    return Math.floor(secs / 60) + 'm ' + (secs % 60) + 's';
+  }
+
+  async function loadDeployments() {
+    const b = document.getElementById('deployments-tbody');
+    if (!isPriv) {
+      b.innerHTML = `<tr><td colspan="7" class="text-center py-10 text-slate-400">You don't have permission to view deployments.</td></tr>`;
+      return;
+    }
+    b.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">Loading…</td></tr>`;
+    // Refresh request list so decommission button visibility is accurate
+    const reqRes = await api('/api/requests/');
+    if (reqRes?.ok) allRequests = await reqRes.json();
+    const res = await api('/api/terraform/runs/');
+    if (!res?.ok) {
+      b.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400">Failed to load deployments.</td></tr>`;
+      return;
+    }
+    const runs = await res.json();
+    if (!runs.length) {
+      b.innerHTML = `<tr><td colspan="7" class="text-center py-10 text-slate-400">No deployment runs yet.</td></tr>`;
+      return;
+    }
+    b.innerHTML = runs.map(function(r) {
+      const summary = r.summary ? r.summary.split('\n')[0].substring(0, 55) + (r.summary.split('\n')[0].length > 55 ? '…' : '') : '—';
+      return `<tr class="border-t border-slate-100 hover:bg-slate-50">
+        <td class="px-3 py-2.5">${_deployStatusBadge(r.status)}</td>
+        <td class="px-3 py-2.5 font-mono text-xs font-semibold text-slate-700">${r.req_id || '—'}</td>
+        <td class="px-3 py-2.5 text-xs text-slate-600">${r.team}</td>
+        <td class="px-3 py-2.5 text-xs text-slate-400 whitespace-nowrap">${r.started_at ? fmtDate(r.started_at) : '—'}</td>
+        <td class="px-3 py-2.5 text-xs text-slate-400 whitespace-nowrap">${_deployDuration(r)}</td>
+        <td class="px-3 py-2.5 text-xs text-slate-500 max-w-[200px] truncate font-mono">${summary}</td>
+        <td class="px-3 py-2.5 text-right">
+          <div class="flex items-center justify-end gap-2">
+            ${r.status === 'succeeded' && r.req_id ? `<button onclick="openOutputsModal('${r.req_id}')"
+                    class="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-800 border border-emerald-200 hover:border-emerald-400 rounded px-2 py-1 transition-colors whitespace-nowrap">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+              Outputs
+            </button>` : ''}
+            ${(function() {
+              if (r.status !== 'succeeded' || r.run_type !== 'apply' || !r.req_id) return '';
+              const req = allRequests.find(x => x.id === r.req_id);
+              if (req && (req.status === 'decommissioned' || req.status === 'decommissioning')) return '';
+              return `<button onclick="decommissionRequest('${r.req_id}')"
+                    class="inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-800 border border-red-200 hover:border-red-400 rounded px-2 py-1 transition-colors whitespace-nowrap">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              Decommission
+            </button>`;
+            })()}
+            <button onclick="openTfRunModal('${r.id}')"
+                    class="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 border border-blue-200 hover:border-blue-400 rounded px-2 py-1 transition-colors whitespace-nowrap">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              Logs
+            </button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  let _auditEvents = [];
+
+  async function loadAudit() {
+    const b = document.getElementById('audit-tbody');
+    if (!isPriv) { b.innerHTML = `<tr><td colspan="5" class="text-center py-10 text-slate-400">Restricted to architects and admins.</td></tr>`; return; }
+
+    const params = new URLSearchParams();
+    const type  = document.getElementById('audit-filter-type')?.value;
+    const actor = document.getElementById('audit-filter-actor')?.value.trim();
+    const from  = document.getElementById('audit-filter-from')?.value;
+    const to    = document.getElementById('audit-filter-to')?.value;
+    if (type)  params.set('event_type', type);
+    if (actor) params.set('actor', actor);
+    if (from)  params.set('from', from);
+    if (to)    params.set('to', to);
+
+    const url = '/api/audit/' + (params.toString() ? '?' + params.toString() : '');
+    const res = await api(url);
+    if (!res?.ok) return;
+    _auditEvents = await res.json();
+    if (!_auditEvents.length) { b.innerHTML = `<tr><td colspan="5" class="text-center py-10 text-slate-400">No events.</td></tr>`; return; }
+    b.innerHTML = _auditEvents.map(e => `
+      <tr>
+        <td class="text-xs text-slate-400 whitespace-nowrap">${fmtDateTime(e.timestamp)}</td>
+        <td>${evtBadge(e.event_type)}</td>
+        <td class="text-slate-700">${e.actor}</td>
+        <td class="text-xs text-slate-500 font-mono">${e.resource_id || '—'}</td>
+        <td class="text-slate-400">${e.details}</td>
+      </tr>`).join('');
+  }
+
+  function _auditFilterColor(el) {
+    if (!el) return;
+    el.classList.toggle('text-slate-400', !el.value);
+    el.classList.toggle('text-slate-800', !!el.value);
+  }
+
+  function initAuditFilterColors() {
+    ['audit-filter-type','audit-filter-actor','audit-filter-from','audit-filter-to'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      _auditFilterColor(el);
+      el.addEventListener('change', () => _auditFilterColor(el));
+      el.addEventListener('input',  () => _auditFilterColor(el));
+    });
+  }
+
+  function clearAuditFilters() {
+    ['audit-filter-type','audit-filter-actor','audit-filter-from','audit-filter-to'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.value = '';
+      _auditFilterColor(el);
+    });
+    loadAudit();
+  }
+
+  function toggleAuditDlMenu() {
+    document.getElementById('audit-dl-menu').classList.toggle('hidden');
+  }
+
+  function downloadAudit(fmt) {
+    document.getElementById('audit-dl-menu').classList.add('hidden');
+    if (!_auditEvents.length) return;
+    const date = new Date().toISOString().slice(0, 10);
+    let blob, filename;
+    if (fmt === 'json') {
+      blob = new Blob([JSON.stringify(_auditEvents, null, 2)], { type: 'application/json' });
+      filename = `audit-log-${date}.json`;
+    } else {
+      const headers = ['timestamp','event_type','actor','resource_type','resource_id','details'];
+      const rows = _auditEvents.map(e =>
+        headers.map(h => '"' + String(e[h] ?? '').replace(/"/g, '""') + '"').join(',')
+      );
+      blob = new Blob([headers.join(',') + '\n' + rows.join('\n')], { type: 'text/csv' });
+      filename = `audit-log-${date}.csv`;
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function fmtDateTime(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  }
+
+  // ── New Request Modal ─────────────────────────────────────────────────────
+  var REGIONS = ['us-east-1','us-west-2','eu-central-1','ap-southeast-1'];
+  var PROTOCOLS = [{value:'tcp',label:'TCP'},{value:'udp',label:'UDP'},{value:'all',label:'All'}];
+  var _portState = {};
+
+  // ── Parameter type registry ────────────────────────────────────────────────
+  // Each type: { render(key, p) → html, getValue(key, p) → value, getCost(key, p, allVals) → number }
+  var PARAM_TYPES = {
+    select: {
+      render: function(key, p) {
+        var h = '<div><label class="block text-xs font-medium text-slate-600 mb-1">' + p.label + '</label>';
+        h += '<select id="rp-' + key + '" onchange="_updateCostCurrent()">';
+        (p.options || []).forEach(function(o) {
+          var sel = String(o.value) === String(p.default) ? ' selected' : '';
+          h += '<option value="' + o.value + '"' + sel + '>' + o.label + '</option>';
+        });
+        return h + '</select></div>';
+      },
+      getValue: function(key) {
+        var el = document.getElementById('rp-' + key); return el ? el.value : null;
+      },
+      getCost: function(key, p, vals) {
+        var opt = (p.options || []).find(function(o) { return String(o.value) === String(vals[key]); });
+        if (!opt) return 0;
+        if (opt.cost != null) return opt.cost;
+        if (opt.cost_per_unit != null && p.unit_param) return opt.cost_per_unit * (parseFloat(vals[p.unit_param]) || 0);
+        return 0;
+      }
+    },
+
+    number: {
+      render: function(key, p) {
+        var h = '<div><label class="block text-xs font-medium text-slate-600 mb-1">' + p.label + '</label>';
+        h += '<input id="rp-' + key + '" type="number"';
+        if (p.min  != null) h += ' min="'         + p.min         + '"';
+        if (p.max  != null) h += ' max="'         + p.max         + '"';
+        if (p.step != null) h += ' step="'        + p.step        + '"';
+        if (p.default != null) h += ' value="'    + p.default     + '"';
+        if (p.placeholder)  h += ' placeholder="' + p.placeholder + '"';
+        return h + ' onchange="_updateCostCurrent()"></div>';
+      },
+      getValue: function(key) {
+        var el = document.getElementById('rp-' + key); return el ? parseFloat(el.value) || 0 : 0;
+      },
+      getCost: function(key, p, vals) {
+        if (p.cost_per_unit != null) return p.cost_per_unit * (parseFloat(vals[key]) || 0);
+        return 0;
+      }
+    },
+
+    text: {
+      render: function(key, p) {
+        var h = '<div><label class="block text-xs font-medium text-slate-600 mb-1">' + p.label + '</label>';
+        h += '<input id="rp-' + key + '" type="text"';
+        if (p.default)     h += ' value="'       + p.default     + '"';
+        if (p.placeholder) h += ' placeholder="' + p.placeholder + '"';
+        return h + '></div>';
+      },
+      getValue: function(key) {
+        var el = document.getElementById('rp-' + key); return el ? el.value : '';
+      },
+      getCost: function() { return 0; }
+    },
+
+    portlist: {
+      render: function(key, p) {
+        var h = '<div class="rounded-lg border border-slate-200 p-3 space-y-2">';
+        h += '<label class="block text-xs font-semibold text-slate-700">' + p.label + '</label>';
+        h += '<div class="flex gap-2 items-center">';
+        h += '<input id="rp-portinput-' + key + '" type="text" placeholder="e.g. 8080 or all" style="width:120px;min-width:120px;flex-shrink:0" onkeydown="if(event.key===\'Enter\'){event.preventDefault();_addPort(\'' + key + '\');}">';
+        h += '<select id="rp-protoinput-' + key + '" style="width:90px;min-width:90px;flex-shrink:0">';
+        PROTOCOLS.forEach(function(pr) { h += '<option value="' + pr.value + '">' + pr.label + '</option>'; });
+        h += '</select>';
+        h += '<button type="button" onclick="_addPort(\'' + key + '\')" class="btn-primary text-xs px-3 py-1.5 flex-shrink-0">+ Add</button>';
+        h += '</div><div id="rp-portlist-' + key + '" class="flex flex-wrap gap-2"></div></div>';
+        return h;
+      },
+      getValue: function(key) {
+        return (_portState[key] || []).map(function(e) { return { port: e.value, protocol: e.protocol }; });
+      },
+      getCost: function() { return 0; }
+    }
+  };
+
+  function openRequestModal() {
+    _populateModal();
+    document.getElementById('request-modal').classList.remove('hidden');
+  }
+  function openRequestModalWithTemplate(id) {
+    _populateModal();
+    document.getElementById('req-template').value = id;
+    onTemplateChange();
+    document.getElementById('request-modal').classList.remove('hidden');
+  }
+  function closeRequestModal() {
+    document.getElementById('request-modal').classList.add('hidden');
+    document.getElementById('req-form').reset();
+    document.getElementById('req-params').innerHTML = '';
+    document.getElementById('req-cost-display').textContent = '—';
+    document.getElementById('req-error').classList.add('hidden');
+    _portState = { inbound_ports: [], outbound_ports: [] };
+  }
+  function _populateModal() {
+    var ts = document.getElementById('req-template');
+    if (ts.options.length <= 1) {
+      allTemplates.forEach(function(t) { ts.add(new Option(t.name, t.id)); });
+    }
+    var rs = document.getElementById('req-region');
+    if (!rs.options.length) { REGIONS.forEach(function(r) { rs.add(new Option(r,r)); }); }
+    if (allTemplates.length === 1 && ts.value === '') {
+      ts.value = allTemplates[0].id;
+      onTemplateChange();
+    }
+  }
+
+  function onTemplateChange() {
+    var id = document.getElementById('req-template').value;
+    var t = allTemplates.find(function(x) { return x.id === id; });
+    document.getElementById('req-params').innerHTML = '';
+    document.getElementById('req-cost-display').textContent = '—';
+    _portState = {};
+    if (!t || !t.parameters) return;
+    // Seed portlist state from defaults
+    Object.keys(t.parameters).forEach(function(k) {
+      var p = t.parameters[k];
+      if (p.type === 'portlist') {
+        _portState[k] = (p.default || []).map(function(d) {
+          return { id: Date.now() + Math.random(), value: d.value, protocol: d.protocol || 'tcp' };
+        });
+      }
+    });
+    _renderParamsForm(t);
+    _updateCost(t);
+  }
+
+  function _renderParamsForm(t) {
+    var params = t.parameters;
+    var keys = Object.keys(params);
+    var html = '';
+
+    // Selects rendered 2-per-row; other inline types solo; portlists full-width at the end
+    var selectKeys = keys.filter(function(k) { return params[k].type === 'select'; });
+    var soloKeys   = keys.filter(function(k) { return params[k].type !== 'select' && params[k].type !== 'portlist'; });
+    var portKeys   = keys.filter(function(k) { return params[k].type === 'portlist'; });
+
+    for (var i = 0; i < selectKeys.length; i += 2) {
+      html += '<div class="grid grid-cols-2 gap-3">';
+      for (var j = i; j < Math.min(i + 2, selectKeys.length); j++) {
+        html += PARAM_TYPES.select.render(selectKeys[j], params[selectKeys[j]]);
+      }
+      html += '</div>';
+    }
+    soloKeys.forEach(function(k) {
+      var renderer = PARAM_TYPES[params[k].type];
+      if (renderer) html += renderer.render(k, params[k]);
+    });
+    portKeys.forEach(function(k) {
+      html += PARAM_TYPES.portlist.render(k, params[k]);
+    });
+
+    document.getElementById('req-params').innerHTML = html;
+    portKeys.forEach(function(k) { _renderPortList(k); });
+  }
+
+  // ── Port helpers ───────────────────────────────────────────────────────────
+  function _addPort(key) {
+    var portInput  = document.getElementById('rp-portinput-'  + key);
+    var protoInput = document.getElementById('rp-protoinput-' + key);
+    if (!portInput) return;
+    var portVal = portInput.value.trim();
+    if (!portVal) return;
+    if (!_portState[key]) _portState[key] = [];
+    _portState[key].push({ id: Date.now() + Math.random(), value: portVal, protocol: protoInput ? protoInput.value : 'tcp' });
+    portInput.value = '';
+    _renderPortList(key);
+  }
+  function _removePort(key, id) {
+    _portState[key] = (_portState[key] || []).filter(function(p) { return p.id !== id; });
+    _renderPortList(key);
+  }
+  function _setPortProtocol(key, id, proto) {
+    var entry = (_portState[key] || []).find(function(p) { return p.id === id; });
+    if (entry) entry.protocol = proto;
+  }
+  function _renderPortList(key) {
+    var container = document.getElementById('rp-portlist-' + key);
+    if (!container) return;
+    var list = _portState[key] || [];
+    if (!list.length) { container.innerHTML = '<span class="text-xs text-slate-400 italic">No ports.</span>'; return; }
+    var html = '';
+    list.forEach(function(entry) {
+      var protoSel = PROTOCOLS.map(function(pr) {
+        return '<option value="' + pr.value + '"' + (entry.protocol === pr.value ? ' selected' : '') + '>' + pr.label + '</option>';
+      }).join('');
+      html += '<div class="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 rounded-full pl-2 pr-1 py-0.5">';
+      html += '<select class="text-xs bg-transparent border-none outline-none flex-shrink-0 cursor-pointer" style="width:52px;min-width:52px" onchange="_setPortProtocol(\'' + key + '\',' + entry.id + ',this.value)">' + protoSel + '</select>';
+      html += '<span class="text-xs font-mono font-medium text-slate-800">' + entry.value + '</span>';
+      html += '<button type="button" onclick="_removePort(\'' + key + '\',' + entry.id + ')" class="text-slate-400 hover:text-red-500 ml-0.5 leading-none flex-shrink-0">✕</button>';
+      html += '</div>';
+    });
+    container.innerHTML = html;
+  }
+
+  // ── Generic value + cost extraction ───────────────────────────────────────
+  function _getParamValues(t) {
+    var vals = {};
+    Object.keys(t.parameters).forEach(function(k) {
+      var p = t.parameters[k];
+      var renderer = PARAM_TYPES[p.type];
+      if (renderer) vals[k] = renderer.getValue(k, p);
+    });
+    return vals;
+  }
+
+  function _updateCostCurrent() {
+    var id = document.getElementById('req-template').value;
+    _updateCost(allTemplates.find(function(x) { return x.id === id; }));
+  }
+
+  function _updateCost(t) {
+    if (!t || !t.parameters) return;
+    var vals  = _getParamValues(t);
+    var total = 0;
+    Object.keys(t.parameters).forEach(function(k) {
+      var p = t.parameters[k];
+      var renderer = PARAM_TYPES[p.type];
+      if (renderer && renderer.getCost) total += renderer.getCost(k, p, vals) || 0;
+    });
+    document.getElementById('req-cost-display').textContent = total.toFixed(2);
+  }
+
+  async function submitRequest(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    var err = document.getElementById('req-error');
+    err.classList.add('hidden');
+    var templateId    = document.getElementById('req-template').value;
+    var region        = document.getElementById('req-region').value;
+    var justification = document.getElementById('req-justification').value.trim();
+    if (!templateId||!region||!justification) { err.textContent='Please fill in all required fields.'; err.classList.remove('hidden'); return; }
+    var t = allTemplates.find(function(x){return x.id===templateId;});
+    var parameters = t ? _getParamValues(t) : {};
+    var cost = parseFloat(document.getElementById('req-cost-display').textContent) || 0;
+    var btn = document.getElementById('req-submit-btn');
+    btn.disabled=true; btn.textContent='Submitting…';
+    try {
+      var res = await api('/api/requests/', { method:'POST', body: JSON.stringify({templateId,region,justification,cost,parameters}) });
+      if (!res?.ok) { var d=await res.json(); err.textContent=d.detail||JSON.stringify(d); err.classList.remove('hidden'); return; }
+      var req = await res.json();
+      allRequests.unshift(req);
+      renderOverview();
+      closeRequestModal();
+      if (req.resourceRendered) {
+        if (req.resourceGithubUrl) {
+          toast(req.id + ' pushed to GitHub — <a href="' + req.resourceGithubUrl + '" target="_blank" class="underline text-blue-600">view</a>', 'success', 6000);
+        } else {
+          toast(req.id + ' ready — <a href="/api/requests/' + req.id + '/resource/" class="underline text-blue-600">download ZIP</a>', 'info', 6000);
+        }
+        if (req.terraformRunId) pollTerraformRun(req.terraformRunId, req.id);
+      } else {
+        toast(req.id + ' submitted — pending approval.', 'info');
+      }
+    } catch(ex) { err.textContent='Unexpected error.'; err.classList.remove('hidden'); }
+    finally { btn.disabled=false; btn.textContent='Submit'; }
+  }
+
+  // ── Role UI ───────────────────────────────────────────────────────────────
+  function applyRoleUI() {
+    if (!user) return;
+    document.getElementById('user-avatar').textContent = ((user.first_name||'')[0]||user.username[0]).toUpperCase();
+    document.getElementById('user-name').textContent   = user.name || user.username;
+    document.getElementById('user-role').textContent   = user.role;
+    ['nav-approvals','nav-config','nav-deployments','nav-audit','gov-label'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (isPriv) { el.style.opacity=''; el.style.pointerEvents=''; }
+      else        { el.style.opacity='0.4'; el.style.pointerEvents='none'; }
+    });
+    const tmplNav = document.getElementById('nav-templates');
+    if (tmplNav) {
+      if (isPriv) tmplNav.classList.remove('hidden');
+      else        tmplNav.classList.add('hidden');
+    }
+  }
+  window.addEventListener('pageshow', function(e) { if (e.persisted) applyRoleUI(); });
+
+  // ── Toast notifications ───────────────────────────────────────────────────
+  function toast(msg, type, duration) {
+    type     = type     || 'info';
+    duration = duration || 3500;
+    const cfg = {
+      success: { bg: 'bg-green-500', icon: '✓' },
+      error:   { bg: 'bg-red-500',   icon: '✕' },
+      warning: { bg: 'bg-amber-400', icon: '!' },
+      info:    { bg: 'bg-blue-500',  icon: 'i' },
+    }[type] || { bg: 'bg-blue-500', icon: 'i' };
+
+    const el    = document.createElement('div');
+    el.className = 'toast-enter pointer-events-auto flex items-start gap-3 bg-white border border-slate-200 rounded-lg shadow-lg px-4 py-3 w-72';
+
+    const dot  = document.createElement('div');
+    dot.className = `mt-0.5 w-5 h-5 rounded-full ${cfg.bg} flex items-center justify-center flex-shrink-0 text-white text-[10px] font-bold`;
+    dot.textContent = cfg.icon;
+
+    const txt  = document.createElement('span');
+    txt.className = 'flex-1 text-sm text-slate-800 leading-snug';
+    txt.innerHTML = msg;   // allows links inside toast
+
+    const btn  = document.createElement('button');
+    btn.className = 'text-slate-400 hover:text-slate-600 flex-shrink-0 text-sm leading-none mt-0.5';
+    btn.textContent = '✕';
+
+    el.append(dot, txt, btn);
+    document.getElementById('toast-container').appendChild(el);
+
+    function dismiss() {
+      el.classList.remove('toast-enter');
+      el.classList.add('toast-exit');
+      el.addEventListener('animationend', function() { el.remove(); }, { once: true });
+    }
+    const timer = setTimeout(dismiss, duration);
+    btn.addEventListener('click', function() { clearTimeout(timer); dismiss(); });
+    el.addEventListener('mouseenter', function() { clearTimeout(timer); });
+    el.addEventListener('mouseleave', function() { setTimeout(dismiss, 1200); });
+  }
+
+  applyRoleUI();
+  loadAll();
+
+  document.addEventListener('click', function(e) {
+    const wrap = document.getElementById('audit-dl-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+      document.getElementById('audit-dl-menu')?.classList.add('hidden');
+    }
+  });
+  </script>
+
+<!-- ── Terraform Run Viewer ──────────────────────────────────────────────── -->
+<div id="tf-run-modal" class="hidden fixed inset-0 z-[90] flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/40" onclick="closeTfRunModal()"></div>
+  <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-3xl border border-slate-200 flex flex-col" style="max-height:85vh">
+
+    <!-- header -->
+    <div class="flex items-center justify-between px-5 py-3 border-b border-slate-200 flex-shrink-0">
+      <div class="flex items-center gap-3">
+        <span class="text-sm font-semibold text-slate-900">Terraform Run</span>
+        <span id="tf-modal-req" class="font-mono text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded"></span>
+        <span id="tf-modal-team" class="text-xs text-slate-400"></span>
+      </div>
+      <div class="flex items-center gap-3">
+        <span id="tf-modal-status" class="text-xs font-semibold px-2.5 py-1 rounded-full"></span>
+        <button onclick="closeTfRunModal()" class="text-slate-400 hover:text-slate-600 text-lg leading-none">&times;</button>
+      </div>
+    </div>
+
+    <!-- summary bar -->
+    <div id="tf-modal-summary-bar" class="hidden px-5 py-2 bg-slate-50 border-b border-slate-100 text-xs text-slate-600 font-mono whitespace-pre-wrap"></div>
+
+    <!-- log output -->
+    <pre id="tf-modal-logs"
+         class="flex-1 overflow-auto bg-slate-900 text-green-300 text-xs font-mono p-4 leading-relaxed"
+         style="min-height:260px;max-height:55vh">Connecting…</pre>
+
+    <!-- footer -->
+    <div class="flex items-center justify-between px-5 py-3 border-t border-slate-200 flex-shrink-0 rounded-b-xl">
+      <span id="tf-modal-note" class="text-xs text-slate-400 italic"></span>
+      <div class="flex gap-2">
+        <button id="tf-modal-retry-btn" onclick="retryDeployment()" class="hidden btn-secondary text-xs py-1.5 px-3">Retry deployment</button>
+        <button id="tf-modal-decomm-btn" onclick="decommissionRequest(document.getElementById('tf-modal-req').textContent.trim())" class="hidden text-xs py-1.5 px-3 rounded-lg font-medium bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors">Decommission</button>
+        <button onclick="downloadTfLogs(_currentTfRunId)" class="btn-secondary text-xs py-1.5 px-3">Download logs</button>
+        <button onclick="closeTfRunModal()" class="btn-primary text-xs py-1.5 px-3">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Outputs Modal ─────────────────────────────────────────────────────── -->
+<div id="outputs-modal" class="hidden fixed inset-0 z-[90] flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/40" onclick="closeOutputsModal()"></div>
+  <div class="relative bg-white rounded-xl shadow-xl w-full max-w-lg border border-slate-200">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+      <div class="flex items-center gap-2">
+        <svg class="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+        <span class="text-sm font-semibold text-slate-900">Terraform Outputs</span>
+        <span id="outputs-modal-req" class="font-mono text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded"></span>
+      </div>
+      <button onclick="closeOutputsModal()" class="text-slate-400 hover:text-slate-600">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="outputs-modal-body" class="p-5 space-y-2 max-h-[60vh] overflow-y-auto">
+      <p class="text-sm text-slate-400 text-center py-6">Loading…</p>
+    </div>
+    <div class="flex justify-end px-5 py-3 border-t border-slate-100">
+      <button onclick="closeOutputsModal()" class="btn-primary text-xs py-1.5 px-3">Close</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
