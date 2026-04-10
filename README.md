@@ -22,6 +22,7 @@ Self-service infrastructure provisioning platform. Developers submit requests fo
 | Dependency | Version | Notes |
 |------------|---------|-------|
 | Python | 3.11+ | |
+| Git | 2.x+ | Required for GitOps cloning during Terraform runs |
 | MongoDB | 7+ | Local or Atlas |
 | Terraform | 1.10+ | Auto-installed by `install.sh` on Linux/macOS |
 | Docker & Compose | any recent | Docker path only |

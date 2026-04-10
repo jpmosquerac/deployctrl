@@ -11,7 +11,9 @@ EXAMPLES_DIR = Path(__file__).resolve().parent.parent.parent / 'tf_templates'
 def _valid_template_ids():
     ids = set()
     for json_path in EXAMPLES_DIR.glob('*/*.json'):
-        with open(json_path) as f:
+        if json_path.name.startswith('._'):
+            continue
+        with open(json_path, encoding='utf-8') as f:
             data = json.load(f)
         if tid := data.get('id'):
             ids.add(tid)

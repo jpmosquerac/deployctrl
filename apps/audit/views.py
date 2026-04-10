@@ -12,7 +12,7 @@ class AuditLogListView(APIView):
     permission_classes = [CanViewAudit]
 
     def get(self, request):
-        from datetime import datetime, timezone
+        from datetime import datetime, timezone, timedelta
         qs = AuditLog.objects.order_by('-timestamp')
         if event_type := request.query_params.get('event_type'):
             qs = qs.filter(event_type=event_type)
@@ -27,7 +27,7 @@ class AuditLogListView(APIView):
                 pass
         if to_date := request.query_params.get('to'):
             try:
-                qs = qs.filter(timestamp__lte=datetime.fromisoformat(to_date).replace(tzinfo=timezone.utc))
+                qs = qs.filter(timestamp__lt=datetime.fromisoformat(to_date).replace(tzinfo=timezone.utc) + timedelta(days=1))
             except ValueError:
                 pass
         return Response(AuditLogSerializer(list(qs[:1000]), many=True).data)

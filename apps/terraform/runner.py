@@ -494,7 +494,12 @@ def _finish(run, status, exit_code, summary):
 
 def _build_env():
     """Inherit the process environment so AWS credentials flow through."""
-    return os.environ.copy()
+    env = os.environ.copy()
+    cache_dir = getattr(settings, 'TF_PLUGIN_CACHE_DIR', '')
+    if cache_dir:
+        os.makedirs(cache_dir, exist_ok=True)
+        env['TF_PLUGIN_CACHE_DIR'] = cache_dir
+    return env
 
 
 def _parse_summary(output):
