@@ -131,12 +131,24 @@ class MongoUser(Document):
 
     # ── RBAC ─────────────────────────────────────────────────────────────
 
+    def _role_perms(self) -> list[str]:
+        """Return the effective permission list for this user's role.
+
+        Checks the MongoDB-stored Role document first so that RBAC changes
+        made via the UI persist across server restarts. Falls back to the
+        hardcoded defaults when no MongoDB document exists for the role.
+        """
+        db_role = Role.objects(name=self.role).first()
+        if db_role is not None:
+            return db_role.permissions
+        return ROLE_PERMISSIONS.get(self.role, [])
+
     def has_permission(self, perm: str) -> bool:
-        role_perms = ROLE_PERMISSIONS.get(self.role, [])
+        role_perms = self._role_perms()
         return '*' in role_perms or perm in role_perms
 
     def get_permissions(self) -> list[str]:
-        role_perms = ROLE_PERMISSIONS.get(self.role, [])
+        role_perms = self._role_perms()
         if '*' in role_perms:
             return list(PERMISSIONS.keys())
         return role_perms

@@ -51,8 +51,11 @@
 </head>
 <body class="bg-slate-50 min-h-screen flex">
 
+  <!-- Mobile sidebar overlay -->
+  <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black/40 z-30 md:hidden" onclick="toggleSidebar()"></div>
+
   <!-- ── Sidebar ── -->
-  <aside class="w-56 flex-shrink-0 bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0">
+  <aside id="sidebar" class="w-56 flex-shrink-0 bg-white border-r border-slate-200 flex-col h-screen sticky top-0 hidden md:flex fixed md:static z-40 md:z-auto">
     <div class="flex items-center gap-2.5 px-4 h-14 border-b border-slate-200 flex-shrink-0">
       <div class="w-7 h-7 bg-blue-600 rounded-md flex items-center justify-center">
         <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -136,8 +139,15 @@
 
   <!-- ── Main ── -->
   <main class="flex-1 min-h-screen flex flex-col">
-    <header class="h-14 flex items-center justify-between px-8 bg-white border-b border-slate-200 flex-shrink-0 sticky top-0 z-10">
-      <h1 id="page-title" class="text-sm font-semibold text-slate-900">Overview</h1>
+    <header class="h-14 flex items-center justify-between px-4 md:px-8 bg-white border-b border-slate-200 flex-shrink-0 sticky top-0 z-10">
+      <div class="flex items-center gap-3">
+        <button onclick="toggleSidebar()" class="md:hidden p-1.5 rounded-md text-slate-500 hover:bg-slate-100" aria-label="Menu">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+        <h1 id="page-title" class="text-sm font-semibold text-slate-900">Overview</h1>
+      </div>
       <button onclick="openRequestModal()" class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3.5 py-1.5 rounded-lg transition-colors">
         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
@@ -146,7 +156,7 @@
       </button>
     </header>
 
-    <div class="flex-1 p-8">
+    <div class="flex-1 p-4 md:p-8">
 
       <!-- ── OVERVIEW ── -->
       <div id="section-overview" class="section active space-y-6">
@@ -175,19 +185,49 @@
       <!-- ── REQUESTS ── -->
       <div id="section-requests" class="section">
         <div class="card overflow-hidden">
-          <table class="w-full">
-            <thead class="bg-slate-50 border-b border-slate-200"><tr><th>ID</th><th>Template</th><th>Cost/mo</th><th>Status</th><th>Deployment</th><th>Created</th><th></th></tr></thead>
-            <tbody id="requests-tbody"><tr><td colspan="7" class="text-center py-10 text-slate-400">Loading…</td></tr></tbody>
-          </table>
+          <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
+            <p class="text-sm font-semibold text-slate-900">My requests</p>
+            <button onclick="loadRequests()" class="btn-secondary text-xs py-1 px-2.5">Refresh</button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="min-w-full">
+              <thead class="bg-slate-50 border-b border-slate-200"><tr>
+                <th>ID</th>
+                <th>Template</th>
+                <th class="hidden sm:table-cell">Cost/mo</th>
+                <th>Status</th>
+                <th class="hidden md:table-cell">Deployment</th>
+                <th class="hidden sm:table-cell">Created</th>
+                <th></th>
+              </tr></thead>
+              <tbody id="requests-tbody"><tr><td colspan="7" class="text-center py-10 text-slate-400">Loading…</td></tr></tbody>
+            </table>
+          </div>
+          <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-500">
+            <div class="flex items-center gap-2">
+              <span>Rows per page:</span>
+              <select onchange="_setPerPage('requests',this.value)" class="text-xs text-slate-700 border border-slate-200 rounded px-1.5 py-0.5 bg-white focus:outline-none focus:border-blue-400">
+                <option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2">
+              <span id="requests-pager-info">—</span>
+              <button id="requests-pager-prev" onclick="_navPage('requests',-1)" class="p-1 rounded hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg></button>
+              <button id="requests-pager-next" onclick="_navPage('requests',1)" class="p-1 rounded hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+            </div>
+          </div>
         </div>
       </div>
 
       <!-- ── APPROVALS ── -->
       <div id="section-approvals" class="section">
         <div class="card divide-y divide-slate-100">
-          <div class="px-5 py-4">
-            <p class="text-sm font-semibold text-slate-900">Pending approvals</p>
-            <p class="text-xs text-slate-400 mt-0.5">Review infrastructure requests before provisioning</p>
+          <div class="flex items-center justify-between px-5 py-4">
+            <div>
+              <p class="text-sm font-semibold text-slate-900">Pending approvals</p>
+              <p class="text-xs text-slate-400 mt-0.5">Review infrastructure requests before provisioning</p>
+            </div>
+            <button onclick="renderApprovals()" class="btn-secondary text-xs py-1 px-2.5">Refresh</button>
           </div>
           <div id="approvals-list"><div class="px-5 py-8 text-center text-sm text-slate-400">Loading…</div></div>
         </div>
@@ -246,10 +286,18 @@
 
           <!-- Users table -->
           <div class="card overflow-hidden">
-            <table class="w-full">
-              <thead class="bg-slate-50 border-b border-slate-200"><tr><th>User</th><th>Email</th><th>Role</th><th>Team</th><th></th></tr></thead>
-              <tbody id="users-tbody"><tr><td colspan="5" class="text-center py-8 text-slate-400">Loading…</td></tr></tbody>
-            </table>
+            <div class="overflow-x-auto">
+              <table class="min-w-full">
+                <thead class="bg-slate-50 border-b border-slate-200"><tr>
+                  <th>User</th>
+                  <th class="hidden sm:table-cell">Email</th>
+                  <th>Role</th>
+                  <th class="hidden sm:table-cell">Team</th>
+                  <th></th>
+                </tr></thead>
+                <tbody id="users-tbody"><tr><td colspan="5" class="text-center py-8 text-slate-400">Loading…</td></tr></tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -278,10 +326,19 @@
 
           <!-- Teams table -->
           <div class="card overflow-hidden">
-            <table class="w-full">
-              <thead class="bg-slate-50 border-b border-slate-200"><tr><th>Team</th><th>Description</th><th>Monthly budget</th><th>Auto-approval threshold</th><th>Created</th><th></th></tr></thead>
-              <tbody id="teams-tbody"><tr><td colspan="6" class="text-center py-8 text-slate-400">Loading…</td></tr></tbody>
-            </table>
+            <div class="overflow-x-auto">
+              <table class="min-w-full">
+                <thead class="bg-slate-50 border-b border-slate-200"><tr>
+                  <th>Team</th>
+                  <th class="hidden sm:table-cell">Description</th>
+                  <th class="hidden sm:table-cell">Monthly budget</th>
+                  <th class="hidden md:table-cell">Auto-approval threshold</th>
+                  <th class="hidden md:table-cell">Created</th>
+                  <th></th>
+                </tr></thead>
+                <tbody id="teams-tbody"><tr><td colspan="6" class="text-center py-8 text-slate-400">Loading…</td></tr></tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -338,15 +395,15 @@
             <button onclick="loadDeployments()" class="btn-secondary text-xs py-1 px-2.5">Refresh</button>
           </div>
           <div class="overflow-x-auto">
-            <table class="w-full">
+            <table class="min-w-full">
               <thead class="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th class="text-left px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
                   <th class="text-left px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Request</th>
-                  <th class="text-left px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Team</th>
-                  <th class="text-left px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Started</th>
-                  <th class="text-left px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Duration</th>
-                  <th class="text-left px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Summary</th>
+                  <th class="text-left px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Team</th>
+                  <th class="text-left px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Started</th>
+                  <th class="text-left px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Duration</th>
+                  <th class="text-left px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Summary</th>
                   <th class="px-3 py-2.5"></th>
                 </tr>
               </thead>
@@ -354,6 +411,19 @@
                 <tr><td colspan="7" class="text-center py-10 text-slate-400">Loading…</td></tr>
               </tbody>
             </table>
+          </div>
+          <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-500">
+            <div class="flex items-center gap-2">
+              <span>Rows per page:</span>
+              <select onchange="_setPerPage('deployments',this.value)" class="text-xs text-slate-700 border border-slate-200 rounded px-1.5 py-0.5 bg-white focus:outline-none focus:border-blue-400">
+                <option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2">
+              <span id="deployments-pager-info">—</span>
+              <button id="deployments-pager-prev" onclick="_navPage('deployments',-1)" class="p-1 rounded hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg></button>
+              <button id="deployments-pager-next" onclick="_navPage('deployments',1)" class="p-1 rounded hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+            </div>
           </div>
         </div>
       </div>
@@ -386,15 +456,15 @@
             <label class="block text-xs font-medium text-slate-500 mb-1">Actor</label>
             <input id="audit-filter-actor" type="text" placeholder="Username…" class="w-full text-slate-400 placeholder-slate-400"/>
           </div>
-          <div>
+          <div class="min-w-[140px]">
             <label class="block text-xs font-medium text-slate-500 mb-1">From</label>
             <input id="audit-filter-from" type="date" class="w-full text-slate-400"/>
           </div>
-          <div>
+          <div class="min-w-[140px]">
             <label class="block text-xs font-medium text-slate-500 mb-1">To</label>
             <input id="audit-filter-to" type="date" class="w-full text-slate-400"/>
           </div>
-          <div class="flex gap-2">
+          <div class="flex flex-wrap gap-2">
             <button onclick="loadAudit()" class="btn-primary">Apply</button>
             <button onclick="clearAuditFilters()" class="btn-secondary">Clear</button>
             <div class="relative" id="audit-dl-wrap">
@@ -412,10 +482,31 @@
         </div>
         <!-- Table -->
         <div class="card overflow-hidden">
-          <table class="w-full">
-            <thead class="bg-slate-50 border-b border-slate-200"><tr><th>Time</th><th>Event</th><th>Actor</th><th>Resource</th><th>Details</th></tr></thead>
-            <tbody id="audit-tbody"><tr><td colspan="5" class="text-center py-10 text-slate-400">Loading…</td></tr></tbody>
-          </table>
+          <div class="overflow-x-auto">
+            <table class="min-w-full">
+              <thead class="bg-slate-50 border-b border-slate-200"><tr>
+                <th class="hidden sm:table-cell">Time</th>
+                <th>Event</th>
+                <th>Actor</th>
+                <th class="hidden sm:table-cell">Resource</th>
+                <th class="hidden md:table-cell">Details</th>
+              </tr></thead>
+              <tbody id="audit-tbody"><tr><td colspan="5" class="text-center py-10 text-slate-400">Loading…</td></tr></tbody>
+            </table>
+          </div>
+          <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-500">
+            <div class="flex items-center gap-2">
+              <span>Rows per page:</span>
+              <select onchange="_setPerPage('audit',this.value)" class="text-xs text-slate-700 border border-slate-200 rounded px-1.5 py-0.5 bg-white focus:outline-none focus:border-blue-400">
+                <option value="10" selected>10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2">
+              <span id="audit-pager-info">—</span>
+              <button id="audit-pager-prev" onclick="_navPage('audit',-1)" class="p-1 rounded hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg></button>
+              <button id="audit-pager-next" onclick="_navPage('audit',1)" class="p-1 rounded hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -423,30 +514,30 @@
       <div id="section-templates" class="section space-y-4">
         <div class="flex items-center justify-between">
           <h2 class="text-base font-semibold text-slate-800">Infrastructure Templates</h2>
-          <div class="flex gap-2">
-            <button onclick="loadTemplates()" class="btn-secondary text-xs px-3 py-1.5">
-              <svg class="w-3.5 h-3.5 inline -mt-0.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-              Refresh
-            </button>
-            <button onclick="openTemplateModal()" class="btn-primary text-xs px-3 py-1.5">+ New template</button>
-          </div>
+          <button onclick="openTemplateModal()" class="btn-primary text-xs px-3 py-1.5">+ New template</button>
         </div>
         <div class="card overflow-hidden">
-          <table class="w-full">
-            <thead class="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500">ID</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500">Name</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500">Category</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500">Est. Cost</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500">Parameters</th>
-                <th class="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody id="templates-tbody">
-              <tr><td colspan="6" class="text-center py-10 text-slate-400">Loading…</td></tr>
-            </tbody>
-          </table>
+          <div class="flex items-center justify-between px-5 py-3 border-b border-slate-200">
+            <p class="text-sm font-semibold text-slate-900">Templates</p>
+            <button onclick="loadTemplates()" class="btn-secondary text-xs py-1 px-2.5">Refresh</button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="min-w-full">
+              <thead class="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500">ID</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500">Name</th>
+                  <th class="hidden sm:table-cell px-4 py-3 text-left text-xs font-semibold text-slate-500">Category</th>
+                  <th class="hidden sm:table-cell px-4 py-3 text-left text-xs font-semibold text-slate-500">Est. Cost</th>
+                  <th class="hidden md:table-cell px-4 py-3 text-left text-xs font-semibold text-slate-500">Parameters</th>
+                  <th class="px-4 py-3"></th>
+                </tr>
+              </thead>
+              <tbody id="templates-tbody">
+                <tr><td colspan="6" class="text-center py-10 text-slate-400">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -640,10 +731,11 @@
     ['dc_token','dc_refresh','dc_user'].forEach(k => localStorage.removeItem(k));
     window.location.href = '/';
   }
-  const isPriv  = user && (user.role === 'architect' || user.role === 'admin');
-  const isAdmin = user && user.role === 'admin';
+  const isPriv   = user && (user.role === 'architect' || user.role === 'admin');
+  const isAdmin  = user && user.role === 'admin';
+  let canDecomm  = user && ((user.permissions||[]).some(p => p === 'decommission_request' || p === '*'));
 
-  let allRequests = [], allTemplates = [], allTeams = [];
+  let allRequests = [], allTemplates = [], allTeams = [], _allRuns = [];
   let rbacData = [];
 
   function authH() { return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }; }
@@ -660,12 +752,25 @@
 
   // ── Navigation ──────────────────────────────────────────────────────────
   const titles = { overview:'Overview', catalog:'Catalog', requests:'Requests', approvals:'Approvals', configuration:'Configuration', deployments:'Deployments', audit:'Audit Log' };
+  function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    const open = sidebar.classList.toggle('flex');
+    sidebar.classList.toggle('hidden', !open);
+    overlay.classList.toggle('hidden', !open);
+  }
+
   function navigate(s, el) {
     document.querySelectorAll('.section').forEach(x => x.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
     document.getElementById(`section-${s}`).classList.add('active');
     if (el) el.classList.add('active');
     document.getElementById('page-title').textContent = titles[s] || s;
+    // Close sidebar on mobile after navigating
+    if (window.innerWidth < 768) {
+      document.getElementById('sidebar').classList.replace('flex', 'hidden');
+      document.getElementById('sidebar-overlay').classList.add('hidden');
+    }
     if (s === 'overview')       loadOverview();
     if (s === 'catalog')        renderCatalog();
     if (s === 'requests')       loadRequests();
@@ -800,12 +905,21 @@
 
   // ── Load all ─────────────────────────────────────────────────────────────
   async function loadAll() {
-    const [rr, tr] = await Promise.all([
+    const [rr, tr, mr] = await Promise.all([
       api('/api/requests/'),
       api('/api/templates/'),
+      api('/api/auth/me/'),
     ]);
     if (rr?.ok) allRequests  = await rr.json();
     if (tr?.ok) allTemplates = await tr.json();
+    if (mr?.ok) {
+      const fresh = (await mr.json()).user;
+      if (fresh) {
+        user = fresh;
+        localStorage.setItem('dc_user', JSON.stringify(fresh));
+        canDecomm = (fresh.permissions||[]).some(p => p === 'decommission_request' || p === '*');
+      }
+    }
     renderOverview();
   }
 
@@ -859,16 +973,58 @@
   }
 
   // ── Requests table ────────────────────────────────────────────────────────
+  // ── Pager infrastructure ──────────────────────────────────────────────────
+  const _pager = {
+    requests:    { page: 1, perPage: 10 },
+    deployments: { page: 1, perPage: 10 },
+    audit:       { page: 1, perPage: 10 },
+  };
+
+  function _renderPager(key, total, page, perPage) {
+    const totalPages = Math.max(1, Math.ceil(total / perPage));
+    const from = total ? (page - 1) * perPage + 1 : 0;
+    const to   = Math.min(page * perPage, total);
+    const info = document.getElementById(`${key}-pager-info`);
+    const prev = document.getElementById(`${key}-pager-prev`);
+    const next = document.getElementById(`${key}-pager-next`);
+    if (info) info.textContent = total ? `${from}–${to} of ${total}` : 'No results';
+    if (prev) prev.disabled = page <= 1;
+    if (next) next.disabled = page >= totalPages;
+  }
+
+  function _navPage(key, delta) {
+    const s = _pager[key];
+    const data = key === 'requests' ? allRequests : key === 'deployments' ? _allRuns : _auditEvents;
+    const totalPages = Math.max(1, Math.ceil(data.length / s.perPage));
+    s.page = Math.max(1, Math.min(totalPages, s.page + delta));
+    if (key === 'requests') renderRequestsTable();
+    else if (key === 'deployments') renderDeploymentsTable();
+    else renderAuditTable();
+  }
+
+  function _setPerPage(key, value) {
+    _pager[key].perPage = parseInt(value, 10);
+    _pager[key].page = 1;
+    _navPage(key, 0);
+  }
+
   async function loadRequests() {
     const res = await api('/api/requests/');
     if (res?.ok) { allRequests = await res.json(); renderOverview(); }
+    _pager.requests.page = 1;
     renderRequestsTable();
   }
 
   function renderRequestsTable() {
     const b = document.getElementById('requests-tbody');
-    if (!allRequests.length) { b.innerHTML = `<tr><td colspan="7" class="text-center py-10 text-slate-400">No requests yet.</td></tr>`; return; }
-    b.innerHTML = allRequests.map(r => {
+    if (!allRequests.length) {
+      b.innerHTML = `<tr><td colspan="7" class="text-center py-10 text-slate-400">No requests yet.</td></tr>`;
+      _renderPager('requests', 0, 1, _pager.requests.perPage);
+      return;
+    }
+    const s = _pager.requests;
+    const slice = allRequests.slice((s.page - 1) * s.perPage, s.page * s.perPage);
+    b.innerHTML = slice.map(r => {
       const t = allTemplates.find(x=>x.id===r.templateId);
       const githubBtn = r.resourceGithubUrl
         ? `<a href="${r.resourceGithubUrl}" target="_blank"
@@ -891,7 +1047,7 @@
              Outputs
            </button>`
         : '';
-      const decommBtn = isPriv && r.terraformRunStatus === 'succeeded'
+      const decommBtn = canDecomm && r.terraformRunStatus === 'succeeded'
           && r.status !== 'decommissioned' && r.status !== 'decommissioning'
         ? `<button onclick="decommissionRequest('${r.id}')"
                    class="inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-800 border border-red-200 hover:border-red-400 rounded px-2 py-1 transition-colors whitespace-nowrap">
@@ -900,15 +1056,16 @@
            </button>`
         : '';
       return `<tr>
-        <td class="font-mono text-xs font-semibold text-slate-600">${r.id}</td>
-        <td class="font-medium text-slate-800">${t?.name||r.templateId}</td>
-        <td>$${parseFloat(r.cost).toFixed(2)}</td>
-        <td>${sBadge(r.status)}</td>
-        <td>${tfBadge(r.terraformRunStatus)}</td>
-        <td class="text-slate-400 text-xs">${fmtDate(r.createdAt)}</td>
-        <td class="text-right"><div class="flex items-center justify-end gap-2">${githubBtn}${outputsBtn}${logsBtn}${decommBtn}</div></td>
+        <td class="font-mono text-xs font-semibold text-slate-600 whitespace-nowrap">${r.id}</td>
+        <td class="font-medium text-slate-800 truncate max-w-xs">${t?.name||r.templateId}</td>
+        <td class="hidden sm:table-cell whitespace-nowrap">$${parseFloat(r.cost).toFixed(2)}</td>
+        <td class="whitespace-nowrap">${sBadge(r.status)}</td>
+        <td class="hidden md:table-cell whitespace-nowrap">${tfBadge(r.terraformRunStatus)}</td>
+        <td class="hidden sm:table-cell text-slate-400 text-xs whitespace-nowrap">${fmtDate(r.createdAt)}</td>
+        <td class="text-right whitespace-nowrap"><div class="flex items-center justify-end gap-2">${githubBtn}${outputsBtn}${logsBtn}${decommBtn}</div></td>
       </tr>`;
     }).join('');
+    _renderPager('requests', allRequests.length, s.page, s.perPage);
   }
 
   // ── Approvals ─────────────────────────────────────────────────────────────
@@ -1101,12 +1258,12 @@
     b.innerHTML = templates.map(t => {
       const paramCount = t.parameters ? Object.keys(t.parameters).length : 0;
       return `<tr class="border-t border-slate-100 hover:bg-slate-50">
-        <td class="px-4 py-3 font-mono text-xs text-slate-500">${t.id}</td>
-        <td class="px-4 py-3 font-medium text-slate-800">${t.name}</td>
-        <td class="px-4 py-3 text-sm text-slate-500 capitalize">${t.category || '—'}</td>
-        <td class="px-4 py-3 text-sm text-slate-500">$${parseFloat(t.estimatedCost || t.estimated_cost || 0).toFixed(2)}</td>
-        <td class="px-4 py-3 text-sm text-slate-400">${paramCount} param${paramCount !== 1 ? 's' : ''}</td>
-        <td class="px-4 py-3 text-right">
+        <td class="px-4 py-3 font-mono text-xs text-slate-500 whitespace-nowrap">${t.id}</td>
+        <td class="px-4 py-3 font-medium text-slate-800 truncate max-w-xs">${t.name}</td>
+        <td class="hidden sm:table-cell px-4 py-3 text-sm text-slate-500 capitalize whitespace-nowrap">${t.category || '—'}</td>
+        <td class="hidden sm:table-cell px-4 py-3 text-sm text-slate-500 whitespace-nowrap">$${parseFloat(t.estimatedCost || t.estimated_cost || 0).toFixed(2)}</td>
+        <td class="hidden md:table-cell px-4 py-3 text-sm text-slate-400 whitespace-nowrap">${paramCount} param${paramCount !== 1 ? 's' : ''}</td>
+        <td class="px-4 py-3 text-right whitespace-nowrap">
           <div class="flex items-center justify-end gap-3">
             <button onclick="editTemplate('${t.id}')" class="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline">Edit</button>
             <button onclick="deleteTemplate('${t.id}', '${t.name.replace(/'/g, "\\'")}')" class="text-xs font-medium text-red-500 hover:text-red-700 hover:underline">Delete</button>
@@ -1305,11 +1462,11 @@
       var u = users[i];
       var roleColor = u.role==='admin'?'bg-rose-50 text-rose-700':u.role==='architect'?'bg-purple-50 text-purple-700':'bg-blue-50 text-blue-700';
       rows += '<tr>';
-      rows += '<td><p class="font-medium text-slate-800">' + u.name + '</p><p class="text-xs text-slate-400">@' + u.username + '</p></td>';
-      rows += '<td class="text-slate-500">' + u.email + '</td>';
-      rows += '<td><span class="badge ' + roleColor + '">' + u.role + '</span></td>';
-      rows += '<td class="text-slate-500">' + (u.team||'—') + '</td>';
-      rows += '<td class="text-right pr-4 space-x-2">';
+      rows += '<td class="truncate max-w-xs"><p class="font-medium text-slate-800 truncate">' + u.name + '</p><p class="text-xs text-slate-400 truncate">@' + u.username + '</p></td>';
+      rows += '<td class="hidden sm:table-cell text-slate-500 truncate max-w-xs">' + u.email + '</td>';
+      rows += '<td class="whitespace-nowrap"><span class="badge ' + roleColor + '">' + u.role + '</span></td>';
+      rows += '<td class="hidden sm:table-cell text-slate-500 whitespace-nowrap">' + (u.team||'—') + '</td>';
+      rows += '<td class="text-right whitespace-nowrap pr-4 space-x-2">';
       if (isAdmin) {
         rows += '<button onclick="openUserEdit(\'' + u.id + '\',\'' + (u.first_name||'') + '\',\'' + (u.last_name||'') + '\',\'' + u.role + '\',\'' + (u.team||'') + '\')" class="btn-secondary text-xs py-1 px-2.5">Edit</button>';
         rows += '<button onclick="deactivateUser(\'' + u.id + '\',\'' + u.username + '\')" class="btn-danger">Deactivate</button>';
@@ -1402,12 +1559,12 @@
     allTeams.forEach(function(t) {
       var threshold = t.approval_threshold != null ? '$' + parseFloat(t.approval_threshold).toLocaleString() : '$100';
       rows += '<tr>';
-      rows += '<td class="font-semibold text-slate-800">' + t.name + '</td>';
-      rows += '<td class="text-slate-500">' + (t.description || '—') + '</td>';
-      rows += '<td><span class="font-semibold text-slate-900">$' + parseFloat(t.budget).toLocaleString() + '</span><span class="text-xs text-slate-400">/mo</span></td>';
-      rows += '<td class="text-slate-600 text-sm">' + threshold + '</td>';
-      rows += '<td class="text-slate-400 text-xs">' + fmtDate(t.created_at) + '</td>';
-      rows += '<td class="text-right pr-4 space-x-2">';
+      rows += '<td class="font-semibold text-slate-800 whitespace-nowrap">' + t.name + '</td>';
+      rows += '<td class="hidden sm:table-cell text-slate-500 truncate max-w-xs">' + (t.description || '—') + '</td>';
+      rows += '<td class="hidden sm:table-cell whitespace-nowrap"><span class="font-semibold text-slate-900">$' + parseFloat(t.budget).toLocaleString() + '</span><span class="text-xs text-slate-400">/mo</span></td>';
+      rows += '<td class="hidden md:table-cell text-slate-600 text-sm whitespace-nowrap">' + threshold + '</td>';
+      rows += '<td class="hidden md:table-cell text-slate-400 text-xs whitespace-nowrap">' + fmtDate(t.created_at) + '</td>';
+      rows += '<td class="text-right whitespace-nowrap pr-4 space-x-2">';
       rows += '<button onclick="openTeamEdit(\'' + t.id + '\',\'' + t.name.replace(/'/g,"\\'") + '\',\'' + (t.description||'').replace(/'/g,"\\'") + '\',' + t.budget + ',' + (t.approval_threshold||100) + ')" class="btn-secondary text-xs py-1 px-2.5">Edit</button>';
       rows += '<button onclick="deleteTeam(\'' + t.id + '\',\'' + t.name.replace(/'/g,"\\'") + '\')" class="btn-danger">Delete</button>';
       rows += '</td></tr>';
@@ -1472,11 +1629,22 @@
     const roles = rbacData.map(r => r.name);
 
     const permLabels = {
-      view_catalog:'View catalog', create_request:'Create request', view_own_requests:'View own requests',
+      view_catalog:'View catalog',
+      create_request:'Create request', view_own_requests:'View own requests',
       view_requests_all:'View all requests', approve_request:'Approve request', reject_request:'Reject request',
-      provision_request:'Provision request', view_audit:'View audit log',
-      view_deployments:'View deployments', manage_gitops:'Configure GitOps', view_users:'View users', manage_users:'Manage users',
+      provision_request:'Provision request', decommission_request:'Decommission request', manage_templates:'Manage templates',
+      view_audit:'View audit log', view_deployments:'View deployments', manage_gitops:'Configure GitOps',
+      view_users:'View users', manage_users:'Manage users',
     };
+
+    const permGroups = [
+      { label: 'Catalog',    perms: ['view_catalog'] },
+      { label: 'Requests',   perms: ['create_request','view_own_requests','view_requests_all','approve_request','reject_request','provision_request','decommission_request','manage_templates'] },
+      { label: 'Governance', perms: ['view_audit','view_deployments','manage_gitops'] },
+      { label: 'Users',      perms: ['view_users','manage_users'] },
+    ];
+
+    const colSpan = roles.length + 1;
 
     // Build HTML with string concat to avoid triple-nested template literals
     var html = '<table class="w-full">';
@@ -1488,23 +1656,36 @@
       html += '<th class="px-5 py-3 text-xs font-semibold uppercase tracking-wider text-center ' + color + '">' + r + '</th>';
     }
     html += '</tr></thead><tbody>';
-    for (var pi = 0; pi < allPerms.length; pi++) {
-      var perm = allPerms[pi];
-      html += '<tr class="border-t border-slate-100 hover:bg-slate-50">';
-      html += '<td class="px-5 py-2.5 text-sm text-slate-700">' + (permLabels[perm] || perm) + '</td>';
-      for (var ci = 0; ci < roles.length; ci++) {
-        var role = roles[ci];
-        var rdata = rbacData.find(function(x){ return x.name === role; });
-        var checked = rdata && (rdata.permissions.indexOf('*') >= 0 || rdata.permissions.indexOf(perm) >= 0);
-        var isWildcard = rdata && rdata.permissions.indexOf('*') >= 0;
-        html += '<td class="px-5 py-2.5 text-center">';
-        html += '<input type="checkbox" class="perm-check" data-role="' + role + '" data-perm="' + perm + '"';
-        if (checked) html += ' checked';
-        if (isWildcard) html += ' disabled title="Admin: all permissions"';
-        html += ' /></td>';
-      }
+
+    for (var gi = 0; gi < permGroups.length; gi++) {
+      var group = permGroups[gi];
+      var groupPerms = group.perms.filter(function(p){ return allPerms.indexOf(p) >= 0; });
+      if (!groupPerms.length) continue;
+
+      // Group header row
+      html += '<tr class="bg-slate-50 border-t-2 border-slate-200">';
+      html += '<td colspan="' + colSpan + '" class="px-5 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">' + group.label + '</td>';
       html += '</tr>';
+
+      for (var pi = 0; pi < groupPerms.length; pi++) {
+        var perm = groupPerms[pi];
+        html += '<tr class="border-t border-slate-100 hover:bg-slate-50">';
+        html += '<td class="px-5 py-2.5 text-sm text-slate-700 pl-7">' + (permLabels[perm] || perm) + '</td>';
+        for (var ci = 0; ci < roles.length; ci++) {
+          var role = roles[ci];
+          var rdata = rbacData.find(function(x){ return x.name === role; });
+          var checked = rdata && (rdata.permissions.indexOf('*') >= 0 || rdata.permissions.indexOf(perm) >= 0);
+          var isWildcard = rdata && rdata.permissions.indexOf('*') >= 0;
+          html += '<td class="px-5 py-2.5 text-center">';
+          html += '<input type="checkbox" class="perm-check" data-role="' + role + '" data-perm="' + perm + '"';
+          if (checked) html += ' checked';
+          if (isWildcard) html += ' disabled title="Admin: all permissions"';
+          html += ' /></td>';
+        }
+        html += '</tr>';
+      }
     }
+
     html += '</tbody></table>';
     wrap.innerHTML = html;
 
@@ -1545,33 +1726,44 @@
 
   async function loadDeployments() {
     const b = document.getElementById('deployments-tbody');
-    if (!isPriv) {
-      b.innerHTML = `<tr><td colspan="7" class="text-center py-10 text-slate-400">You don't have permission to view deployments.</td></tr>`;
-      return;
-    }
+    if (!isPriv) { renderDeploymentsTable(); return; }
     b.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">Loading…</td></tr>`;
-    // Refresh request list so decommission button visibility is accurate
     const reqRes = await api('/api/requests/');
     if (reqRes?.ok) allRequests = await reqRes.json();
     const res = await api('/api/terraform/runs/');
     if (!res?.ok) {
-      b.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400">Failed to load deployments.</td></tr>`;
+      b.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">Failed to load deployments.</td></tr>`;
+      _renderPager('deployments', 0, 1, _pager.deployments.perPage);
       return;
     }
-    const runs = await res.json();
-    if (!runs.length) {
+    _allRuns = await res.json();
+    _pager.deployments.page = 1;
+    renderDeploymentsTable();
+  }
+
+  function renderDeploymentsTable() {
+    const b = document.getElementById('deployments-tbody');
+    if (!isPriv) {
+      b.innerHTML = `<tr><td colspan="7" class="text-center py-10 text-slate-400">You don't have permission to view deployments.</td></tr>`;
+      _renderPager('deployments', 0, 1, _pager.deployments.perPage);
+      return;
+    }
+    if (!_allRuns.length) {
       b.innerHTML = `<tr><td colspan="7" class="text-center py-10 text-slate-400">No deployment runs yet.</td></tr>`;
+      _renderPager('deployments', 0, 1, _pager.deployments.perPage);
       return;
     }
-    b.innerHTML = runs.map(function(r) {
+    const s = _pager.deployments;
+    const slice = _allRuns.slice((s.page - 1) * s.perPage, s.page * s.perPage);
+    b.innerHTML = slice.map(function(r) {
       const summary = r.summary ? r.summary.split('\n')[0].substring(0, 55) + (r.summary.split('\n')[0].length > 55 ? '…' : '') : '—';
       return `<tr class="border-t border-slate-100 hover:bg-slate-50">
-        <td class="px-3 py-2.5">${_deployStatusBadge(r.status)}</td>
-        <td class="px-3 py-2.5 font-mono text-xs font-semibold text-slate-700">${r.req_id || '—'}</td>
-        <td class="px-3 py-2.5 text-xs text-slate-600">${r.team}</td>
-        <td class="px-3 py-2.5 text-xs text-slate-400 whitespace-nowrap">${r.started_at ? fmtDate(r.started_at) : '—'}</td>
-        <td class="px-3 py-2.5 text-xs text-slate-400 whitespace-nowrap">${_deployDuration(r)}</td>
-        <td class="px-3 py-2.5 text-xs text-slate-500 max-w-[200px] truncate font-mono">${summary}</td>
+        <td class="px-3 py-2.5 whitespace-nowrap">${_deployStatusBadge(r.status)}</td>
+        <td class="px-3 py-2.5 font-mono text-xs font-semibold text-slate-700 whitespace-nowrap">${r.req_id || '—'}</td>
+        <td class="px-3 py-2.5 text-xs text-slate-600 whitespace-nowrap hidden sm:table-cell">${r.team}</td>
+        <td class="px-3 py-2.5 text-xs text-slate-400 whitespace-nowrap hidden sm:table-cell">${r.started_at ? fmtDate(r.started_at) : '—'}</td>
+        <td class="px-3 py-2.5 text-xs text-slate-400 whitespace-nowrap hidden md:table-cell">${_deployDuration(r)}</td>
+        <td class="px-3 py-2.5 text-xs text-slate-500 truncate font-mono hidden md:table-cell max-w-xs" title="${summary}">${summary}</td>
         <td class="px-3 py-2.5 text-right">
           <div class="flex items-center justify-end gap-2">
             ${r.status === 'succeeded' && r.req_id ? `<button onclick="openOutputsModal('${r.req_id}')"
@@ -1580,7 +1772,7 @@
               Outputs
             </button>` : ''}
             ${(function() {
-              if (r.status !== 'succeeded' || r.run_type !== 'apply' || !r.req_id) return '';
+              if (!canDecomm || r.status !== 'succeeded' || r.run_type !== 'apply' || !r.req_id) return '';
               const req = allRequests.find(x => x.id === r.req_id);
               if (req && (req.status === 'decommissioned' || req.status === 'decommissioning')) return '';
               return `<button onclick="decommissionRequest('${r.req_id}')"
@@ -1598,14 +1790,13 @@
         </td>
       </tr>`;
     }).join('');
+    _renderPager('deployments', _allRuns.length, s.page, s.perPage);
   }
 
   let _auditEvents = [];
 
   async function loadAudit() {
-    const b = document.getElementById('audit-tbody');
-    if (!isPriv) { b.innerHTML = `<tr><td colspan="5" class="text-center py-10 text-slate-400">Restricted to architects and admins.</td></tr>`; return; }
-
+    if (!isPriv) { renderAuditTable(); return; }
     const params = new URLSearchParams();
     const type  = document.getElementById('audit-filter-type')?.value;
     const actor = document.getElementById('audit-filter-actor')?.value.trim();
@@ -1615,20 +1806,37 @@
     if (actor) params.set('actor', actor);
     if (from)  params.set('from', from);
     if (to)    params.set('to', to);
-
     const url = '/api/audit/' + (params.toString() ? '?' + params.toString() : '');
     const res = await api(url);
     if (!res?.ok) return;
     _auditEvents = await res.json();
-    if (!_auditEvents.length) { b.innerHTML = `<tr><td colspan="5" class="text-center py-10 text-slate-400">No events.</td></tr>`; return; }
-    b.innerHTML = _auditEvents.map(e => `
+    _pager.audit.page = 1;
+    renderAuditTable();
+  }
+
+  function renderAuditTable() {
+    const b = document.getElementById('audit-tbody');
+    if (!isPriv) {
+      b.innerHTML = `<tr><td colspan="5" class="text-center py-10 text-slate-400">Restricted to architects and admins.</td></tr>`;
+      _renderPager('audit', 0, 1, _pager.audit.perPage);
+      return;
+    }
+    if (!_auditEvents.length) {
+      b.innerHTML = `<tr><td colspan="5" class="text-center py-10 text-slate-400">No events.</td></tr>`;
+      _renderPager('audit', 0, 1, _pager.audit.perPage);
+      return;
+    }
+    const s = _pager.audit;
+    const slice = _auditEvents.slice((s.page - 1) * s.perPage, s.page * s.perPage);
+    b.innerHTML = slice.map(e => `
       <tr>
-        <td class="text-xs text-slate-400 whitespace-nowrap">${fmtDateTime(e.timestamp)}</td>
+        <td class="text-xs text-slate-400 whitespace-nowrap hidden sm:table-cell">${fmtDateTime(e.timestamp)}</td>
         <td>${evtBadge(e.event_type)}</td>
-        <td class="text-slate-700">${e.actor}</td>
-        <td class="text-xs text-slate-500 font-mono">${e.resource_id || '—'}</td>
-        <td class="text-slate-400">${e.details}</td>
+        <td class="text-slate-700 whitespace-nowrap">${e.actor}</td>
+        <td class="text-xs text-slate-500 font-mono whitespace-nowrap hidden sm:table-cell">${e.resource_id || '—'}</td>
+        <td class="text-slate-400 truncate max-w-xs hidden md:table-cell" title="${(e.details||'').replace(/"/g,'&quot;')}">${e.details}</td>
       </tr>`).join('');
+    _renderPager('audit', _auditEvents.length, s.page, s.perPage);
   }
 
   function _auditFilterColor(el) {
@@ -1654,6 +1862,7 @@
       el.value = '';
       _auditFilterColor(el);
     });
+    _pager.audit.page = 1;
     loadAudit();
   }
 

@@ -121,7 +121,7 @@ data "aws_vpc" "default" {
 
 resource "aws_security_group" "instance" {
   name        = "${var.name_prefix}-ec2-sg"
-  description = "Managed by DeployCtrl — EC2 instance security group"
+  description = "Managed by DeployCtrl - EC2 instance security group"
   vpc_id      = data.aws_vpc.default.id
 
   # Inbound rules — one rule per port in var.inbound_ports

@@ -20,7 +20,7 @@ INSTALLED_APPS = [
     'apps.audit',
     'apps.gitops',
     'apps.teams',
-    'apps.terraform',
+    'apps.terraform.apps.TerraformConfig',
 ]
 
 MIDDLEWARE = [
@@ -99,3 +99,6 @@ TERRAFORM_WORK_DIR = config('TERRAFORM_WORK_DIR', default='/tmp/deployctrl/works
 # TF_BACKEND_BASE_URL must be reachable from the Terraform process.
 TF_STATE_SECRET     = config('TF_STATE_SECRET',     default='change-me-in-production')
 TF_BACKEND_BASE_URL = config('TF_BACKEND_BASE_URL', default='http://127.0.0.1:8000')
+# Shared provider cache — avoids re-downloading providers on every run.
+# Point to a persistent directory outside /tmp.
+TF_PLUGIN_CACHE_DIR = config('TF_PLUGIN_CACHE_DIR', default='')

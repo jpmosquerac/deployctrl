@@ -3,7 +3,7 @@ import mongoengine as me
 
 
 class AuditLog(me.Document):
-    event_type    = me.StringField(max_length=30, required=True)
+    event_type    = me.StringField(max_length=50, required=True)
     actor         = me.StringField(max_length=200, required=True)
     resource_type = me.StringField(max_length=50, required=True)
     resource_id   = me.StringField(max_length=100, required=True)

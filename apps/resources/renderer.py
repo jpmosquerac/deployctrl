@@ -20,7 +20,9 @@ def _load_template(template_id):
     Raises ValueError if not found.
     """
     for json_path in sorted(EXAMPLES_DIR.glob('*/*.json')):
-        with open(json_path) as f:
+        if json_path.name.startswith('._'):
+            continue
+        with open(json_path, encoding='utf-8') as f:
             data = json.load(f)
         if data.get('id') == template_id:
             tf_path = json_path.with_suffix('.tf')
@@ -58,7 +60,8 @@ def _normalize(key, value, param_def):
     if param_def.get('type') == 'portlist':
         if isinstance(value, list):
             return [
-                str(item['value']) if isinstance(item, dict) else str(item)
+                str(item.get('value') or item.get('port') or item.get('label') or item)
+                if isinstance(item, dict) else str(item)
                 for item in value
             ]
     return value
@@ -92,7 +95,8 @@ def render_resource(infra_request):
     # Inject context params that live outside the parameters dict
     normalized['region'] = infra_request.region
     team_slug = _slugify(infra_request.team or 'default')
-    normalized['name_prefix'] = f'deployctrl-{team_slug}'
+    req_slug = _slugify(infra_request.req_id or str(infra_request.id)[-8:])
+    normalized['name_prefix'] = f'deployctrl-{team_slug}-{req_slug}'
 
     # S3 buckets require a globally unique name — generate one if the caller
     # did not provide it (it is not a user-facing template parameter).

@@ -49,12 +49,21 @@ class TerraformRunLogsView(APIView):
     permission_classes = [IsMongoAuthenticated]
 
     def get(self, request, pk):
-        if not request.user.has_permission('view_deployments'):
-            return Response({'detail': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
         try:
             run = TerraformRun.objects.get(id=pk)
         except (DoesNotExist, MEValidationError):
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if not request.user.has_permission('view_deployments'):
+            # Developers may only view logs for their own requests
+            from apps.infra_requests.models import InfraRequest
+            own = InfraRequest.objects.filter(
+                mongo_user_id=request.user.id_str,
+                req_number__exists=True,
+            ).scalar('req_number')
+            own_req_ids = {f'REQ-{n:04d}' for n in own}
+            if run.req_id not in own_req_ids:
+                return Response({'detail': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
 
         if run.log:
             logs = run.log

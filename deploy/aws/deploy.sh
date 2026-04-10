@@ -105,6 +105,7 @@ else
     "set -e
      aws s3 cp s3://$S3_BUCKET/$S3_KEY /tmp/deployctrl.tar.gz
      sudo tar -xzf /tmp/deployctrl.tar.gz -C /opt/deployctrl --overwrite 2>/dev/null
+     sudo find /opt/deployctrl/tf_templates -name '._*' -delete 2>/dev/null || true
      rm /tmp/deployctrl.tar.gz
      sudo chown -R deployctrl:deployctrl /opt/deployctrl
      sudo chmod -R g+rw /opt/deployctrl/tf_templates
