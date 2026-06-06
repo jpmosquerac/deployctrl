@@ -1,0 +1,97 @@
+{
+  "id": "t-ec2",
+  "name": "EC2 Instance",
+  "description": "Amazon EC2 virtual machine. Configure compute, storage, OS, and network security rules.",
+  "category": "compute",
+  "icon": "server",
+  "terraformModule": "ec2_instance.tf",
+  "estimatedCost": 10.07,
+  "costNote": "Cost = instance_type + (disk_type.cost_per_gb × disk_size_gb) + os_premium",
+  "parameters": {
+    "instance_type": {
+      "label": "Instance Type",
+      "description": "CPU and memory configuration",
+      "type": "select",
+      "required": true,
+      "default": "t3.small",
+      "options": [
+        { "value": "t2.micro",  "label": "t2.micro  — 1 vCPU / 1 GB RAM",   "cost": 8.47  },
+        { "value": "t3.small",  "label": "t3.small  — 2 vCPU / 2 GB RAM",   "cost": 15.18 },
+        { "value": "t3.medium", "label": "t3.medium — 2 vCPU / 4 GB RAM",   "cost": 30.37 },
+        { "value": "t3.large",  "label": "t3.large  — 2 vCPU / 8 GB RAM",   "cost": 60.74 },
+        { "value": "t3.xlarge", "label": "t3.xlarge — 4 vCPU / 16 GB RAM",  "cost": 121.47}
+      ]
+    },
+    "disk_type": {
+      "label": "Disk Type",
+      "description": "EBS volume type (cost is per GB, multiplied by disk_size_gb)",
+      "type": "select",
+      "required": true,
+      "default": "gp3",
+      "unit_param": "disk_size_gb",
+      "options": [
+        { "value": "gp3", "label": "GP3 — General Purpose SSD (recommended)", "cost_per_unit": 0.08  },
+        { "value": "gp2", "label": "GP2 — Legacy General Purpose SSD",         "cost_per_unit": 0.10  },
+        { "value": "io1", "label": "IO1 — Provisioned IOPS SSD",               "cost_per_unit": 0.125 }
+      ]
+    },
+    "disk_size_gb": {
+      "label": "Disk Size",
+      "description": "EBS root volume size in GB",
+      "type": "select",
+      "required": true,
+      "default": 20,
+      "options": [
+        { "value": 20,  "label": "20 GB"  },
+        { "value": 50,  "label": "50 GB"  },
+        { "value": 100, "label": "100 GB" },
+        { "value": 200, "label": "200 GB" }
+      ]
+    },
+    "os": {
+      "label": "Operating System",
+      "description": "Base AMI. Windows adds a license premium.",
+      "type": "select",
+      "required": true,
+      "default": "amazon-linux-2",
+      "options": [
+        { "value": "amazon-linux-2", "label": "Amazon Linux 2",      "cost": 0     },
+        { "value": "ubuntu-22.04",   "label": "Ubuntu 22.04 LTS",    "cost": 0     },
+        { "value": "windows-2022",   "label": "Windows Server 2022", "cost": 14.60 }
+      ]
+    },
+    "inbound_ports": {
+      "label": "Inbound Ports",
+      "description": "Security group ingress rules. Each port has its own protocol.",
+      "type": "portlist",
+      "required": false,
+      "default": [
+        { "value": "22",  "label": "22  — SSH",   "protocol": "tcp" },
+        { "value": "80",  "label": "80  — HTTP",  "protocol": "tcp" },
+        { "value": "443", "label": "443 — HTTPS", "protocol": "tcp" }
+      ],
+      "options": [
+        { "value": "22",   "label": "22   — SSH"        },
+        { "value": "80",   "label": "80   — HTTP"       },
+        { "value": "443",  "label": "443  — HTTPS"      },
+        { "value": "3389", "label": "3389 — RDP"        },
+        { "value": "8080", "label": "8080 — Alt HTTP"   },
+        { "value": "5432", "label": "5432 — PostgreSQL" }
+      ]
+    },
+    "outbound_ports": {
+      "label": "Outbound Ports",
+      "description": "Security group egress rules. Each port has its own protocol.",
+      "type": "portlist",
+      "required": false,
+      "default": [
+        { "value": "all", "label": "All traffic", "protocol": "all" }
+      ],
+      "options": [
+        { "value": "all", "label": "All traffic"   },
+        { "value": "80",  "label": "80  — HTTP"    },
+        { "value": "443", "label": "443 — HTTPS"   }
+      ]
+    }
+  }
+}

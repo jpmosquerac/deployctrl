@@ -1,0 +1,21 @@
+{
+  "name": "DeployCtrl Dev Container",
+  "dockerComposeFile": [
+    "../local-dev/docker-compose.yml"
+  ],
+  "service": "api",
+  "workspaceFolder": "/app",
+  "shutdownAction": "stopCompose",
+  "settings": {
+    "terminal.integrated.shell.linux": "/bin/bash",
+    "python.defaultInterpreterPath": "/usr/local/bin/python",
+    "python.analysis.typeCheckingMode": "basic"
+  },
+  "extensions": [
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "ms-azuretools.vscode-docker"
+  ],
+  "remoteUser": "root",
+  "postCreateCommand": "pip install --no-cache-dir -r requirements.txt"
+}

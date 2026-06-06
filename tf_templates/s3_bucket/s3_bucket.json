@@ -1,0 +1,78 @@
+{
+  "id": "t-s3-bucket",
+  "name": "S3 Bucket",
+  "description": "Amazon S3 object storage bucket. Configure storage class, versioning, encryption, access control, and lifecycle policies.",
+  "category": "storage",
+  "icon": "hard-drive",
+  "terraformModule": "s3_bucket.tf",
+  "estimatedCost": 0.23,
+  "costNote": "Cost = storage_class.cost_per_unit × estimated_size_gb",
+  "parameters": {
+    "storage_class": {
+      "label": "Storage Class",
+      "description": "Determines durability, availability, and cost. Cost is per GB/month.",
+      "type": "select",
+      "required": true,
+      "default": "STANDARD",
+      "unit_param": "estimated_size_gb",
+      "options": [
+        { "value": "STANDARD",            "label": "Standard — Frequent access",         "cost_per_unit": 0.023  },
+        { "value": "INTELLIGENT_TIERING", "label": "Intelligent Tiering — Auto-tiered",  "cost_per_unit": 0.023  },
+        { "value": "STANDARD_IA",         "label": "Standard-IA — Infrequent access",    "cost_per_unit": 0.0125 },
+        { "value": "GLACIER_IR",          "label": "Glacier Instant — Archive (fast)",   "cost_per_unit": 0.004  },
+        { "value": "GLACIER",             "label": "Glacier Flexible — Archive (slow)",  "cost_per_unit": 0.0036 }
+      ]
+    },
+    "estimated_size_gb": {
+      "label": "Estimated Size (GB)",
+      "description": "Expected total storage in GB. Used only for cost estimation.",
+      "type": "number",
+      "required": true,
+      "default": 10,
+      "min": 1,
+      "placeholder": "10"
+    },
+    "versioning": {
+      "label": "Versioning",
+      "description": "Keep previous versions of every object.",
+      "type": "select",
+      "required": true,
+      "default": "Enabled",
+      "options": [
+        { "value": "Enabled",   "label": "Enabled",   "cost": 0 },
+        { "value": "Suspended", "label": "Disabled",  "cost": 0 }
+      ]
+    },
+    "encryption": {
+      "label": "Encryption",
+      "description": "Server-side encryption for objects at rest.",
+      "type": "select",
+      "required": true,
+      "default": "AES256",
+      "options": [
+        { "value": "AES256",  "label": "SSE-S3 — AWS managed keys (free)", "cost": 0    },
+        { "value": "aws:kms", "label": "SSE-KMS — Customer managed keys",  "cost": 0.03 }
+      ]
+    },
+    "access_control": {
+      "label": "Access Control",
+      "description": "Who can access objects in this bucket.",
+      "type": "select",
+      "required": true,
+      "default": "private",
+      "options": [
+        { "value": "private",     "label": "Private — No public access",       "cost": 0 },
+        { "value": "public-read", "label": "Public read — Static website/CDN", "cost": 0 }
+      ]
+    },
+    "lifecycle_days": {
+      "label": "Object Expiration (days)",
+      "description": "Automatically delete objects after N days. Set to 0 to disable.",
+      "type": "number",
+      "required": false,
+      "default": 0,
+      "min": 0,
+      "placeholder": "0 = no expiration"
+    }
+  }
+}

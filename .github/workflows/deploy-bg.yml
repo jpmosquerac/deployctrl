@@ -1,0 +1,311 @@
+name: Deploy Blue/Green to AWS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      force_color:
+        description: "Force deploy to a specific color (blue|green). Leave blank to auto-pick the inactive one."
+        required: false
+        default: ""
+
+concurrency:
+  group: deploy-bg
+  cancel-in-progress: false
+
+env:
+  AWS_REGION:        ${{ vars.AWS_REGION         || 'us-east-1' }}
+  PERSISTENT_STACK:  ${{ vars.PERSISTENT_STACK   || 'deployctrl-persistent' }}
+  APP_STACK_PREFIX:  ${{ vars.APP_STACK_PREFIX   || 'deployctrl-app' }}
+  INSTANCE_TYPE:     ${{ vars.INSTANCE_TYPE      || 't3.small' }}
+
+jobs:
+  deploy:
+    name: Blue/Green deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Resolve persistent-stack exports
+        id: exports
+        run: |
+          set -euo pipefail
+          get_export() {
+            aws cloudformation list-exports \
+              --query "Exports[?Name=='${PERSISTENT_STACK}-$1'].Value" \
+              --output text
+          }
+          LISTENER_ARN=$(get_export listener-arn)
+          BLUE_TG=$(get_export blue-tg)
+          GREEN_TG=$(get_export green-tg)
+          ALB_DNS=$(get_export alb-dns)
+          ALB_ARN=$(get_export alb-arn)
+
+          for var in LISTENER_ARN BLUE_TG GREEN_TG ALB_DNS ALB_ARN; do
+            if [ -z "${!var}" ] || [ "${!var}" = "None" ]; then
+              echo "::error::Could not find export ${PERSISTENT_STACK}-* in region $AWS_REGION."
+              echo "::error::Deploy bg-persistent.yml first (see deploy/aws/BLUEGREEN.md)."
+              exit 1
+            fi
+          done
+
+          {
+            echo "listener_arn=$LISTENER_ARN"
+            echo "blue_tg=$BLUE_TG"
+            echo "green_tg=$GREEN_TG"
+            echo "alb_dns=$ALB_DNS"
+            echo "alb_arn=$ALB_ARN"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Determine live + target color
+        id: colors
+        env:
+          LISTENER_ARN: ${{ steps.exports.outputs.listener_arn }}
+          BLUE_TG:      ${{ steps.exports.outputs.blue_tg }}
+          GREEN_TG:     ${{ steps.exports.outputs.green_tg }}
+          FORCE_COLOR:  ${{ github.event.inputs.force_color }}
+        run: |
+          set -euo pipefail
+          # Simple forward (single TG): DefaultActions[0].TargetGroupArn is set.
+          CURRENT_TG=$(aws elbv2 describe-listeners --listener-arns "$LISTENER_ARN" \
+            --query 'Listeners[0].DefaultActions[0].TargetGroupArn' --output text)
+
+          # Weighted forward (intermediate state during a swap): pick the TG with the higher weight.
+          if [ -z "$CURRENT_TG" ] || [ "$CURRENT_TG" = "None" ]; then
+            CURRENT_TG=$(aws elbv2 describe-listeners --listener-arns "$LISTENER_ARN" \
+              --query 'Listeners[0].DefaultActions[0].ForwardConfig.TargetGroups | sort_by(@, &Weight) | [-1].TargetGroupArn' \
+              --output text)
+          fi
+
+          if [ "$CURRENT_TG" = "$BLUE_TG" ]; then
+            LIVE=blue;  NEW=green; NEW_TG="$GREEN_TG"; OLD_TG="$BLUE_TG"
+          else
+            LIVE=green; NEW=blue;  NEW_TG="$BLUE_TG";  OLD_TG="$GREEN_TG"
+          fi
+
+          if [ -n "$FORCE_COLOR" ]; then
+            case "$FORCE_COLOR" in
+              blue)  NEW=blue;  NEW_TG="$BLUE_TG";  OLD_TG="$GREEN_TG" ;;
+              green) NEW=green; NEW_TG="$GREEN_TG"; OLD_TG="$BLUE_TG"  ;;
+              *) echo "::error::force_color must be 'blue' or 'green'"; exit 1 ;;
+            esac
+            echo "::notice::force_color=$FORCE_COLOR overriding auto-pick"
+          fi
+
+          echo "live=$LIVE"     >> "$GITHUB_OUTPUT"
+          echo "new=$NEW"       >> "$GITHUB_OUTPUT"
+          echo "new_tg=$NEW_TG" >> "$GITHUB_OUTPUT"
+          echo "old_tg=$OLD_TG" >> "$GITHUB_OUTPUT"
+
+          echo "::notice::Live color = $LIVE | Deploying to = $NEW"
+
+      - name: Package application
+        run: |
+          set -euo pipefail
+          tar -czf /tmp/deployctrl.tar.gz \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='.venv' --exclude='venv' \
+            --exclude='__pycache__' --exclude='*.pyc' --exclude='*.pyo' \
+            --exclude='.env' --exclude='staticfiles' \
+            --exclude='.DS_Store' --exclude='._*' \
+            -C "$GITHUB_WORKSPACE" .
+          ls -lh /tmp/deployctrl.tar.gz
+
+      - name: Upload code to S3
+        id: upload
+        run: |
+          set -euo pipefail
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          BUCKET="deployctrl-code-${ACCOUNT_ID}"
+          KEY="deployctrl-${GITHUB_SHA}.tar.gz"
+
+          if ! aws s3api head-bucket --bucket "$BUCKET" 2>/dev/null; then
+            echo "==> Creating S3 bucket $BUCKET"
+            if [ "$AWS_REGION" = "us-east-1" ]; then
+              aws s3api create-bucket --bucket "$BUCKET" --region "$AWS_REGION"
+            else
+              aws s3api create-bucket --bucket "$BUCKET" --region "$AWS_REGION" \
+                --create-bucket-configuration LocationConstraint="$AWS_REGION"
+            fi
+            aws s3api put-public-access-block --bucket "$BUCKET" \
+              --public-access-block-configuration "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
+            aws s3api put-bucket-versioning --bucket "$BUCKET" \
+              --versioning-configuration Status=Enabled
+          fi
+
+          aws s3 cp /tmp/deployctrl.tar.gz "s3://${BUCKET}/${KEY}"
+
+          echo "bucket=$BUCKET" >> "$GITHUB_OUTPUT"
+          echo "key=$KEY"       >> "$GITHUB_OUTPUT"
+
+      - name: Pick a subnet for the new instance
+        id: subnet
+        env:
+          ALB_ARN: ${{ steps.exports.outputs.alb_arn }}
+        run: |
+          set -euo pipefail
+          # Pick a subnet the ALB itself uses, so the instance is in an AZ the ALB has enabled.
+          SUBNET_ID=$(aws elbv2 describe-load-balancers --load-balancer-arns "$ALB_ARN" \
+            --query 'LoadBalancers[0].AvailabilityZones[0].SubnetId' --output text)
+          VPC_ID=$(aws elbv2 describe-load-balancers --load-balancer-arns "$ALB_ARN" \
+            --query 'LoadBalancers[0].VpcId' --output text)
+          if [ -z "$SUBNET_ID" ] || [ "$SUBNET_ID" = "None" ]; then
+            echo "::error::Could not determine an ALB subnet"
+            exit 1
+          fi
+          echo "subnet_id=$SUBNET_ID" >> "$GITHUB_OUTPUT"
+          echo "::notice::Launching in subnet $SUBNET_ID (vpc $VPC_ID, an ALB-enabled AZ)"
+
+      - name: Delete stale stack of the target color (if any)
+        env:
+          NEW: ${{ steps.colors.outputs.new }}
+        run: |
+          set -euo pipefail
+          STACK="${APP_STACK_PREFIX}-${NEW}"
+          STATUS=$(aws cloudformation describe-stacks --stack-name "$STACK" \
+            --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "NONE")
+          if [ "$STATUS" != "NONE" ]; then
+            echo "==> Deleting existing $NEW stack (status: $STATUS) before fresh deploy"
+            aws cloudformation delete-stack --stack-name "$STACK"
+            aws cloudformation wait stack-delete-complete --stack-name "$STACK"
+          fi
+
+      - name: Create new color stack
+        env:
+          NEW:       ${{ steps.colors.outputs.new }}
+          BUCKET:    ${{ steps.upload.outputs.bucket }}
+          KEY:       ${{ steps.upload.outputs.key }}
+          SUBNET_ID: ${{ steps.subnet.outputs.subnet_id }}
+        run: |
+          set -euo pipefail
+          STACK="${APP_STACK_PREFIX}-${NEW}"
+          echo "==> Creating stack $STACK"
+          aws cloudformation create-stack \
+            --stack-name "$STACK" \
+            --template-body file://deploy/aws/bg-app.yml \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --parameters \
+              ParameterKey=PersistentStackName,ParameterValue="$PERSISTENT_STACK" \
+              ParameterKey=Color,ParameterValue="$NEW" \
+              ParameterKey=SubnetId,ParameterValue="$SUBNET_ID" \
+              ParameterKey=KeyPairName,ParameterValue="${{ secrets.AWS_KEY_PAIR_NAME }}" \
+              ParameterKey=InstanceType,ParameterValue="$INSTANCE_TYPE" \
+              ParameterKey=CodeS3Bucket,ParameterValue="$BUCKET" \
+              ParameterKey=CodeS3Key,ParameterValue="$KEY" \
+              ParameterKey=AppSecretKey,ParameterValue="${{ secrets.APP_SECRET_KEY }}" \
+              ParameterKey=AllowedHosts,ParameterValue="${{ vars.ALLOWED_HOSTS || '*' }}" \
+              ParameterKey=CORSAllowedOrigins,ParameterValue="${{ vars.CORS_ALLOWED_ORIGINS || '' }}" \
+              ParameterKey=Environment,ParameterValue="${{ vars.APP_ENVIRONMENT || 'production' }}" \
+              ParameterKey=RunSeedData,ParameterValue="${{ vars.RUN_SEED_DATA || 'false' }}"
+
+          echo "==> Waiting for stack-create-complete (up to ~25 min)..."
+          aws cloudformation wait stack-create-complete --stack-name "$STACK"
+
+      - name: Attach new TG to listener (weight 0) so ELB starts health checks
+        env:
+          LISTENER_ARN: ${{ steps.exports.outputs.listener_arn }}
+          NEW_TG:       ${{ steps.colors.outputs.new_tg }}
+          OLD_TG:       ${{ steps.colors.outputs.old_tg }}
+        run: |
+          set -euo pipefail
+          cat > /tmp/actions.json <<JSON
+          [
+            {
+              "Type": "forward",
+              "ForwardConfig": {
+                "TargetGroups": [
+                  {"TargetGroupArn": "${OLD_TG}", "Weight": 100},
+                  {"TargetGroupArn": "${NEW_TG}", "Weight": 0}
+                ]
+              }
+            }
+          ]
+          JSON
+          aws elbv2 modify-listener \
+            --listener-arn "$LISTENER_ARN" \
+            --default-actions "file:///tmp/actions.json" >/dev/null
+          echo "::notice::Listener references both TGs (old=100% / new=0%) - ELB will now health-check the new TG"
+
+      - name: Wait for new target group to be healthy
+        env:
+          NEW_TG: ${{ steps.colors.outputs.new_tg }}
+        run: |
+          set -euo pipefail
+          echo "==> Waiting up to 10 minutes for healthy targets in $NEW_TG"
+          for i in $(seq 1 60); do
+            STATES=$(aws elbv2 describe-target-health --target-group-arn "$NEW_TG" \
+              --query 'TargetHealthDescriptions[].TargetHealth.State' --output text || echo "")
+            COUNT=$(echo "$STATES" | wc -w | tr -d ' ')
+            echo "  attempt $i: count=$COUNT states='$STATES'"
+            if [ "$COUNT" -ge 1 ] && ! echo "$STATES" | tr '\t' '\n' | grep -vq '^healthy$'; then
+              echo "==> All targets healthy."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Timed out waiting for healthy targets in $NEW_TG"
+          exit 1
+
+      - name: Swap ALB listener to new color
+        env:
+          LISTENER_ARN: ${{ steps.exports.outputs.listener_arn }}
+          NEW_TG:       ${{ steps.colors.outputs.new_tg }}
+          NEW:          ${{ steps.colors.outputs.new }}
+        run: |
+          set -euo pipefail
+          aws elbv2 modify-listener \
+            --listener-arn "$LISTENER_ARN" \
+            --default-actions "Type=forward,TargetGroupArn=$NEW_TG" >/dev/null
+          echo "::notice::Listener now forwards 100% to $NEW"
+
+      - name: Smoke test through the ALB
+        env:
+          ALB_DNS: ${{ steps.exports.outputs.alb_dns }}
+        run: |
+          set -euo pipefail
+          echo "==> Smoke-testing http://$ALB_DNS/"
+          OK=0
+          for i in $(seq 1 12); do
+            CODE=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 "http://$ALB_DNS/" || echo "000")
+            echo "  attempt $i: HTTP $CODE"
+            if [[ "$CODE" =~ ^(200|301|302)$ ]]; then
+              OK=1
+              break
+            fi
+            sleep 5
+          done
+          if [ "$OK" -ne 1 ]; then
+            echo "::error::Smoke test failed. Roll back by re-running 'Swap ALB listener' against the old TG."
+            exit 1
+          fi
+          echo "==> Smoke test passed."
+
+      - name: Deployment summary
+        if: always()
+        env:
+          LIVE:    ${{ steps.colors.outputs.live }}
+          NEW:     ${{ steps.colors.outputs.new }}
+          ALB_DNS: ${{ steps.exports.outputs.alb_dns }}
+        run: |
+          {
+            echo "## Blue/Green deployment"
+            echo ""
+            echo "- **Previous live color:** \`$LIVE\`"
+            echo "- **New live color:** \`$NEW\`"
+            echo "- **Commit:** \`$GITHUB_SHA\`"
+            echo "- **App URL:** http://$ALB_DNS"
+            echo ""
+            echo "_The old (\`$LIVE\`) stack is left running for instant rollback._"
+            echo "_It will be torn down automatically at the start of the next deploy._"
+          } >> "$GITHUB_STEP_SUMMARY"

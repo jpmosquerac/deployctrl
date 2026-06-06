@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DeployCtrl — Sign in</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif; }
+    input:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-50 flex">
+
+  <!-- Left panel — branding -->
+  <div class="hidden lg:flex w-[420px] flex-shrink-0 flex-col bg-white border-r border-slate-200 px-12 py-16">
+    <!-- Logo -->
+    <div class="flex items-center gap-2.5 mb-auto">
+      <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+        <svg class="w-4.5 h-4.5 text-white" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+        </svg>
+      </div>
+      <span class="text-sm font-semibold text-slate-900 tracking-tight">DeployCtrl</span>
+    </div>
+
+    <!-- Tagline -->
+    <div class="mb-auto">
+      <h2 class="text-2xl font-semibold text-slate-900 leading-snug mb-3">
+        Cloud governance<br/>made simple.
+      </h2>
+      <p class="text-sm text-slate-500 leading-relaxed">
+        Request, approve, and provision infrastructure — with full audit trail and policy enforcement built in.
+      </p>
+
+      <div class="mt-8 space-y-3">
+        <div class="flex items-start gap-3">
+          <div class="w-5 h-5 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <svg class="w-3 h-3 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
+          </div>
+          <p class="text-sm text-slate-600">Role-based access control</p>
+        </div>
+        <div class="flex items-start gap-3">
+          <div class="w-5 h-5 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <svg class="w-3 h-3 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
+          </div>
+          <p class="text-sm text-slate-600">Approval workflows &amp; audit log</p>
+        </div>
+        <div class="flex items-start gap-3">
+          <div class="w-5 h-5 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <svg class="w-3 h-3 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
+          </div>
+          <p class="text-sm text-slate-600">GitOps &amp; policy-as-code</p>
+        </div>
+      </div>
+    </div>
+
+    <p class="text-xs text-slate-400">&copy; 2026 DeployCtrl</p>
+  </div>
+
+  <!-- Right panel — form -->
+  <div class="flex-1 flex items-center justify-center p-8">
+    <div class="w-full max-w-sm">
+
+      <!-- Mobile logo -->
+      <div class="flex items-center gap-2 mb-8 lg:hidden">
+        <div class="w-7 h-7 bg-blue-600 rounded-md flex items-center justify-center">
+          <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+          </svg>
+        </div>
+        <span class="text-sm font-semibold text-slate-900">DeployCtrl</span>
+      </div>
+
+      <h1 class="text-xl font-semibold text-slate-900 mb-1">Sign in</h1>
+      <p class="text-sm text-slate-500 mb-7">Enter your credentials to access the platform.</p>
+
+      <!-- Error -->
+      <div id="error-banner" class="hidden mb-5 flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3.5 py-2.5">
+        <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+        </svg>
+        <span id="error-text"></span>
+      </div>
+
+      <form id="login-form" novalidate class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5" for="username">Username</label>
+          <input id="username" type="text" autocomplete="username" placeholder="alice"
+            class="w-full bg-white border border-slate-300 text-slate-900 placeholder-slate-400 rounded-lg px-3.5 py-2.5 text-sm transition-all" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5" for="password">Password</label>
+          <div class="relative">
+            <input id="password" type="password" autocomplete="current-password" placeholder="••••••••"
+              class="w-full bg-white border border-slate-300 text-slate-900 placeholder-slate-400 rounded-lg px-3.5 py-2.5 pr-10 text-sm transition-all" />
+            <button type="button" id="toggle-pw"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <button id="submit-btn" type="submit"
+          class="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-medium rounded-lg py-2.5 transition-colors flex items-center justify-center gap-2 mt-1">
+          <span id="btn-text">Sign in</span>
+          <svg id="btn-spinner" class="hidden w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+          </svg>
+        </button>
+      </form>
+
+      <!-- Demo credentials -->
+      <div class="mt-6 pt-6 border-t border-slate-200">
+        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider mb-3">Demo accounts</p>
+        <div class="grid grid-cols-3 gap-2">
+          <button onclick="fillCreds('alice','demopassword123')"
+            class="text-left px-3 py-2.5 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-lg transition-all">
+            <p class="text-sm font-medium text-slate-800">alice</p>
+            <p class="text-xs text-slate-400 mt-0.5">Developer</p>
+          </button>
+          <button onclick="fillCreds('bob','demopassword123')"
+            class="text-left px-3 py-2.5 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-lg transition-all">
+            <p class="text-sm font-medium text-slate-800">bob</p>
+            <p class="text-xs text-slate-400 mt-0.5">Architect</p>
+          </button>
+          <button onclick="fillCreds('admin','adminpassword123')"
+            class="text-left px-3 py-2.5 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-lg transition-all">
+            <p class="text-sm font-medium text-slate-800">admin</p>
+            <p class="text-xs text-slate-400 mt-0.5">Admin</p>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    if (localStorage.getItem('dc_token')) window.location.href = '/dashboard/';
+
+    document.getElementById('toggle-pw').addEventListener('click', () => {
+      const pw = document.getElementById('password');
+      pw.type = pw.type === 'password' ? 'text' : 'password';
+    });
+
+    function fillCreds(u, p) {
+      document.getElementById('username').value = u;
+      document.getElementById('password').value = p;
+      document.getElementById('error-banner').classList.add('hidden');
+    }
+
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const banner = document.getElementById('error-banner');
+      banner.classList.add('hidden');
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      if (!username || !password) { showErr('Enter both username and password.'); return; }
+
+      const btn = document.getElementById('submit-btn');
+      const btnText = document.getElementById('btn-text');
+      const spinner = document.getElementById('btn-spinner');
+      btn.disabled = true; btnText.textContent = 'Signing in…'; spinner.classList.remove('hidden');
+
+      try {
+        const res = await fetch('/api/auth/login/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) { showErr(data.non_field_errors?.[0] || data.detail || 'Invalid credentials.'); return; }
+        localStorage.setItem('dc_token', data.token);
+        localStorage.setItem('dc_refresh', data.refresh);
+        localStorage.setItem('dc_user', JSON.stringify(data.user));
+        window.location.href = '/dashboard/';
+      } catch { showErr('Could not reach the server.'); }
+      finally { btn.disabled = false; btnText.textContent = 'Sign in'; spinner.classList.add('hidden'); }
+    });
+
+    function showErr(msg) {
+      document.getElementById('error-text').textContent = msg;
+      document.getElementById('error-banner').classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>
